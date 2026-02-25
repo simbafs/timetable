@@ -11,5 +11,8 @@ export default defineConfig({
 	integrations: [react()],
 	vite: {
 		plugins: [tailwindcss(), yaml()],
+		server: {
+			allowedHosts: ['timetable.simbafs.cc'],
+		},
 	},
 })

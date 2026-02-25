@@ -109,13 +109,17 @@ async function addLessonEvent(
 	})
 }
 
-async function createWeekNumbers(auth: Auth.OAuth2Client, calendarId: string, start: Date) {
+async function createWeekNumbers(auth: Auth.OAuth2Client, calendarId: string, start: Date, end: Date) {
 	const d = new Date(start)
 	const calendar = google.calendar({ version: 'v3', auth })
 
-	for (let i = 1; i <= 18; i++) {
+	let i = 1
+	while (true) {
 		const sDate = setDayOfWeek(new Date(d), 1) // Mon
 		const eDate = setDayOfWeek(new Date(d), 5) // Fri
+
+		// If the start of the week is after the semester end, stop
+		if (sDate > end) break
 
 		// Set end time to end of Friday
 		const startStr = formatDateTime(sDate, 0, 0)
@@ -131,6 +135,7 @@ async function createWeekNumbers(auth: Auth.OAuth2Client, calendarId: string, st
 		})
 
 		d.setDate(d.getDate() + 7)
+		i++
 	}
 }
 
@@ -206,7 +211,7 @@ export const POST: APIRoute = async ({ request }) => {
 			}
 
 			if (data.includeWeekNumbers !== false) {
-				await createWeekNumbers(oauth2Client, calendarId, semester.start)
+				await createWeekNumbers(oauth2Client, calendarId, semester.start, semester.end)
 			}
 
 			return new Response(JSON.stringify({ success: true }), {
