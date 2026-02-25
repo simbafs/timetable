@@ -55,6 +55,7 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 	const [showModal, setShowModal] = useState(false)
 	const [newLesson, setNewLesson] = useState({ name: '', location: '' })
 	const [editingLessonId, setEditingLessonId] = useState<string | null>(null)
+	const [collisionError, setCollisionError] = useState(false)
 
 	const handleMouseDown = useCallback((day: number, period: string) => {
 		setIsDragging(true)
@@ -74,7 +75,15 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 		if (!isDragging || !dragStart || !dragEnd) return
 
 		if (dragStart.day === dragEnd.day) {
-			setShowModal(true)
+			const startIdx = Math.min(PERIOD_ORDER.indexOf(dragStart.period), PERIOD_ORDER.indexOf(dragEnd.period))
+			const endIdx = Math.max(PERIOD_ORDER.indexOf(dragStart.period), PERIOD_ORDER.indexOf(dragEnd.period))
+
+			if (!checkCollision(dragStart.day, PERIOD_ORDER[startIdx], PERIOD_ORDER[endIdx])) {
+				setShowModal(true)
+			} else {
+				setDragStart(null)
+				setDragEnd(null)
+			}
 		}
 
 		setIsDragging(false)
@@ -84,6 +93,16 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 		if (!newLesson.name) return
 
 		if (editingLessonId) {
+			const editingLesson = lessons.find(l => l.id === editingLessonId)
+			if (!editingLesson) return
+
+			if (
+				checkCollision(editingLesson.day, editingLesson.startPeriod, editingLesson.endPeriod, editingLessonId)
+			) {
+				setCollisionError(true)
+				return
+			}
+
 			const newLessons = lessons.map(l =>
 				l.id === editingLessonId ? { ...l, name: newLesson.name, location: newLesson.location } : l,
 			)
@@ -95,6 +114,11 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 
 			const startIdx = Math.min(PERIOD_ORDER.indexOf(dragStart.period), PERIOD_ORDER.indexOf(dragEnd.period))
 			const endIdx = Math.max(PERIOD_ORDER.indexOf(dragStart.period), PERIOD_ORDER.indexOf(dragEnd.period))
+
+			if (checkCollision(dragStart.day, PERIOD_ORDER[startIdx], PERIOD_ORDER[endIdx])) {
+				setCollisionError(true)
+				return
+			}
 
 			const lesson: Lesson = {
 				id: crypto.randomUUID(),
@@ -116,6 +140,7 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 		setDragStart(null)
 		setDragEnd(null)
 		setEditingLessonId(null)
+		setCollisionError(false)
 	}
 
 	const handleCloseModal = () => {
@@ -124,6 +149,7 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 		setDragStart(null)
 		setDragEnd(null)
 		setEditingLessonId(null)
+		setCollisionError(false)
 	}
 
 	const handleDeleteLesson = (id: string) => {
@@ -149,6 +175,19 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 			}
 		}
 		return selected
+	}
+
+	const checkCollision = (day: number, startPeriod: string, endPeriod: string, excludeId?: string) => {
+		const startIdx = PERIOD_ORDER.indexOf(startPeriod)
+		const endIdx = PERIOD_ORDER.indexOf(endPeriod)
+
+		return lessons.some(l => {
+			if (excludeId && l.id === excludeId) return false
+			if (l.day !== day) return false
+			const lStartIdx = PERIOD_ORDER.indexOf(l.startPeriod)
+			const lEndIdx = PERIOD_ORDER.indexOf(l.endPeriod)
+			return startIdx <= lEndIdx && endIdx >= lStartIdx
+		})
 	}
 
 	const selection = getSelection()
@@ -254,6 +293,11 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 							{editingLessonId ? '編輯課程' : '新增課程'}
 						</h3>
 						<div className="space-y-4">
+							{collisionError && (
+								<div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+									該時段已有課程，無法重疊
+								</div>
+							)}
 							<div>
 								<label className="mb-1.5 block text-sm font-medium text-zinc-600">課程名稱</label>
 								<input
@@ -261,7 +305,10 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 									placeholder="例如：微積分"
 									className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
 									value={newLesson.name}
-									onChange={e => setNewLesson({ ...newLesson, name: e.target.value })}
+									onChange={e => {
+										setNewLesson({ ...newLesson, name: e.target.value })
+										setCollisionError(false)
+									}}
 									autoFocus
 								/>
 							</div>
