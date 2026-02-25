@@ -54,6 +54,7 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 	const [dragEnd, setDragEnd] = useState<{ day: number; period: string } | null>(null)
 	const [showModal, setShowModal] = useState(false)
 	const [newLesson, setNewLesson] = useState({ name: '', location: '' })
+	const [editingLessonId, setEditingLessonId] = useState<string | null>(null)
 
 	const handleMouseDown = useCallback((day: number, period: string) => {
 		setIsDragging(true)
@@ -80,29 +81,49 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 	}, [isDragging, dragStart, dragEnd])
 
 	const handleAddLesson = () => {
-		if (!newLesson.name || !dragStart || !dragEnd) return
+		if (!newLesson.name) return
 
-		const startIdx = Math.min(PERIOD_ORDER.indexOf(dragStart.period), PERIOD_ORDER.indexOf(dragEnd.period))
-		const endIdx = Math.max(PERIOD_ORDER.indexOf(dragStart.period), PERIOD_ORDER.indexOf(dragEnd.period))
+		if (editingLessonId) {
+			const newLessons = lessons.map(l =>
+				l.id === editingLessonId ? { ...l, name: newLesson.name, location: newLesson.location } : l,
+			)
+			setLessons(newLessons)
+			onLessonsChange?.(newLessons)
+			;(window as any).setLessons?.(newLessons)
+		} else {
+			if (!dragStart || !dragEnd) return
 
-		const lesson: Lesson = {
-			id: crypto.randomUUID(),
-			name: newLesson.name,
-			location: newLesson.location,
-			day: dragStart.day,
-			startPeriod: PERIOD_ORDER[startIdx],
-			endPeriod: PERIOD_ORDER[endIdx],
+			const startIdx = Math.min(PERIOD_ORDER.indexOf(dragStart.period), PERIOD_ORDER.indexOf(dragEnd.period))
+			const endIdx = Math.max(PERIOD_ORDER.indexOf(dragStart.period), PERIOD_ORDER.indexOf(dragEnd.period))
+
+			const lesson: Lesson = {
+				id: crypto.randomUUID(),
+				name: newLesson.name,
+				location: newLesson.location,
+				day: dragStart.day,
+				startPeriod: PERIOD_ORDER[startIdx],
+				endPeriod: PERIOD_ORDER[endIdx],
+			}
+
+			const newLessons = [...lessons, lesson]
+			setLessons(newLessons)
+			onLessonsChange?.(newLessons)
+			;(window as any).setLessons?.(newLessons)
 		}
-
-		const newLessons = [...lessons, lesson]
-		setLessons(newLessons)
-		onLessonsChange?.(newLessons)
-		;(window as any).setLessons?.(newLessons)
 
 		setShowModal(false)
 		setNewLesson({ name: '', location: '' })
 		setDragStart(null)
 		setDragEnd(null)
+		setEditingLessonId(null)
+	}
+
+	const handleCloseModal = () => {
+		setShowModal(false)
+		setNewLesson({ name: '', location: '' })
+		setDragStart(null)
+		setDragEnd(null)
+		setEditingLessonId(null)
 	}
 
 	const handleDeleteLesson = (id: string) => {
@@ -110,6 +131,7 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 		setLessons(newLessons)
 		onLessonsChange?.(newLessons)
 		;(window as any).setLessons?.(newLessons)
+		handleCloseModal()
 	}
 
 	const getSelection = () => {
@@ -198,13 +220,22 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 							key={lesson.id}
 							className={`absolute z-10 flex flex-col justify-center overflow-hidden rounded px-1 py-0.5 text-xs font-medium text-white shadow-sm ${COLORS[idx % COLORS.length]}`}
 							style={getLessonStyle(lesson)}
+							onClick={e => {
+								e.stopPropagation()
+								setEditingLessonId(lesson.id)
+								setNewLesson({ name: lesson.name, location: lesson.location })
+								setShowModal(true)
+							}}
 						>
 							<span className="truncate">{lesson.name}</span>
 							{lesson.location && <span className="text-white/70 truncate">{lesson.location}</span>}
 							<button
 								type="button"
 								className="absolute end-0.5 top-0.5 hidden h-4 w-4 items-center justify-center rounded text-white/70 hover:bg-white/20 hover:text-white"
-								onClick={() => handleDeleteLesson(lesson.id)}
+								onClick={e => {
+									e.stopPropagation()
+									handleDeleteLesson(lesson.id)
+								}}
 							>
 								×
 							</button>
@@ -216,10 +247,12 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 			{showModal && (
 				<div
 					className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-					onClick={() => setShowModal(false)}
+					onClick={handleCloseModal}
 				>
 					<div className="w-80 rounded-2xl bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-						<h3 className="mb-4 text-lg font-semibold text-zinc-800">新增課程</h3>
+						<h3 className="mb-4 text-lg font-semibold text-zinc-800">
+							{editingLessonId ? '編輯課程' : '新增課程'}
+						</h3>
 						<div className="space-y-4">
 							<div>
 								<label className="mb-1.5 block text-sm font-medium text-zinc-600">課程名稱</label>
@@ -244,20 +277,30 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 							</div>
 						</div>
 						<div className="mt-6 flex gap-3">
-							<button
-								type="button"
-								className="flex-1 rounded-xl border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50"
-								onClick={() => setShowModal(false)}
-							>
-								取消
-							</button>
+							{editingLessonId ? (
+								<button
+									type="button"
+									className="flex-1 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+									onClick={() => handleDeleteLesson(editingLessonId)}
+								>
+									刪除
+								</button>
+							) : (
+								<button
+									type="button"
+									className="flex-1 rounded-xl border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50"
+									onClick={handleCloseModal}
+								>
+									取消
+								</button>
+							)}
 							<button
 								type="button"
 								className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
 								onClick={handleAddLesson}
 								disabled={!newLesson.name}
 							>
-								確認
+								{editingLessonId ? '儲存' : '確認'}
 							</button>
 						</div>
 					</div>
