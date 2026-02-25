@@ -203,10 +203,18 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 		const height = (endIdx - startIdx + 1) * 41 - 1
 		const top = startIdx * 41
 
+		// Grid has 8 columns (60px sidebar + 7 days) and 7 gaps of 1px
+		// Total available width for 7 days = 100% - 60px (sidebar) - 7px (gaps)
+		// Single day width = (100% - 67px) / 7
+		//
+		// Left position calculation:
+		// Base offset = 60px (sidebar) + 1px (first gap) = 61px
+		// Stride per day = day width + 1px gap = (100% - 67px)/7 + 1px = (100% - 60px)/7
+
 		return {
 			top: `${top}px`,
 			height: `${height}px`,
-			left: `calc(61px + (100% - 67px) / 7 * ${lesson.day})`,
+			left: `calc(61px + ((100% - 60px) / 7) * ${lesson.day})`,
 			width: `calc((100% - 67px) / 7)`,
 		}
 	}
