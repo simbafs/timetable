@@ -48,10 +48,11 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 
 	const handleMouseOver = useCallback(
 		(day: number, period: string) => {
-			if (!isDragging || readOnly) return
-			setDragEnd({ day, period })
+			if (!isDragging || readOnly || !dragStart) return
+			// Constrain drag to the same day as start
+			setDragEnd({ day: dragStart.day, period })
 		},
-		[isDragging, readOnly],
+		[isDragging, readOnly, dragStart],
 	)
 
 	const handleMouseUp = useCallback(() => {
