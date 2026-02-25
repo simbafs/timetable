@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Lesson } from '../types'
 import { exportToCalendar } from '../utils/calendar'
+import { getPeriodTable, getSchoolConfig, SCHOOLS } from '../utils/config'
 import { generateICS } from '../utils/ics'
 import TimetableGrid from './TimetableGrid'
 
@@ -13,10 +14,27 @@ export default function TimetableApp() {
 	const [loading, setLoading] = useState(false)
 	const [isEditing, setIsEditing] = useState(false)
 	const exportModalRef = useRef<HTMLDialogElement>(null)
-	const [semesterStart, setSemesterStart] = useState('2025-02-17')
-	const [semesterEnd, setSemesterEnd] = useState('2025-06-20')
+	const [selectedSchoolId, setSelectedSchoolId] = useState(() => {
+		if (typeof localStorage !== 'undefined') {
+			return localStorage.getItem('selected_school') || SCHOOLS[0].id
+		}
+		return SCHOOLS[0].id
+	})
+
+	const schoolConfig = getSchoolConfig(selectedSchoolId) || SCHOOLS[0]
+
+	const [semesterStart, setSemesterStart] = useState(schoolConfig.dates.start)
+	const [semesterEnd, setSemesterEnd] = useState(schoolConfig.dates.end)
 	const [calendarName, setCalendarName] = useState('課表')
 	const [includeWeekNumbers, setIncludeWeekNumbers] = useState(true)
+
+	useEffect(() => {
+		localStorage.setItem('selected_school', selectedSchoolId)
+		// Update dates when school changes, if not manually overridden?
+		// For simplicity, just reset to school defaults when school changes
+		setSemesterStart(schoolConfig.dates.start)
+		setSemesterEnd(schoolConfig.dates.end)
+	}, [selectedSchoolId])
 
 	useEffect(() => {
 		const storedToken = localStorage.getItem('google_access_token')
@@ -122,7 +140,14 @@ export default function TimetableApp() {
 		const semester = [...parseDate(semesterStart), ...parseDate(semesterEnd)]
 
 		try {
-			const result = await exportToCalendar(accessToken, semester, calendarName, lessons, includeWeekNumbers)
+			const result = await exportToCalendar(
+				accessToken,
+				semester,
+				calendarName,
+				lessons,
+				includeWeekNumbers,
+				selectedSchoolId,
+			)
 			if (result?.error) {
 				alert(result.error)
 			} else if (result?.success) {
@@ -139,7 +164,7 @@ export default function TimetableApp() {
 	}
 
 	const handleDownloadICS = () => {
-		const icsContent = generateICS(lessons, semesterStart, semesterEnd)
+		const icsContent = generateICS(lessons, semesterStart, semesterEnd, getPeriodTable(schoolConfig))
 		const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' })
 		const url = window.URL.createObjectURL(blob)
 		const link = document.createElement('a')
@@ -153,7 +178,20 @@ export default function TimetableApp() {
 	return (
 		<div className="w-full max-w-6xl mx-auto px-4 py-8">
 			<div className="flex justify-between items-center mb-6">
-				<h1 className="text-2xl font-bold text-zinc-800">我的課表</h1>
+				<div className="flex items-center gap-4">
+					<h1 className="text-2xl font-bold text-zinc-800">我的課表</h1>
+					<select
+						value={selectedSchoolId}
+						onChange={e => setSelectedSchoolId(e.target.value)}
+						className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 shadow-sm transition-all hover:bg-zinc-50 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+					>
+						{SCHOOLS.map(s => (
+							<option key={s.id} value={s.id}>
+								{s.name}
+							</option>
+						))}
+					</select>
+				</div>
 				<div className="flex gap-2">
 					<button
 						onClick={() => exportModalRef.current?.showModal()}
@@ -180,7 +218,12 @@ export default function TimetableApp() {
 			</div>
 
 			<div className="glass-panel overflow-hidden rounded-3xl border border-white/40 bg-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] backdrop-blur-xl">
-				<TimetableGrid lessons={lessons} onLessonsChange={handleLessonsChange} readOnly={!isEditing} />
+				<TimetableGrid
+					lessons={lessons}
+					onLessonsChange={handleLessonsChange}
+					readOnly={!isEditing}
+					schoolConfig={schoolConfig}
+				/>
 			</div>
 
 			<dialog

@@ -1,5 +1,4 @@
 import type { Lesson } from '../types'
-import { PERIOD_TABLE } from './constants'
 
 function formatICSDate(date: Date): string {
 	const pad = (n: number) => n.toString().padStart(2, '0')
@@ -14,14 +13,19 @@ function formatICSDate(date: Date): string {
 	)
 }
 
-function getLessonTime(baseDate: Date, startPeriod: string, endPeriod: string): [Date, Date] {
+function getLessonTime(
+	baseDate: Date,
+	startPeriod: string,
+	endPeriod: string,
+	periodTable: Record<string, [number, number]>,
+): [Date, Date] {
 	const start = new Date(baseDate)
-	const startConf = PERIOD_TABLE[startPeriod] || [8, 0]
+	const startConf = periodTable[startPeriod] || [8, 0]
 	const [startHour, startMinute] = startConf
 	start.setHours(startHour, startMinute, 0, 0)
 
 	const end = new Date(baseDate)
-	const endConf = PERIOD_TABLE[endPeriod] || [17, 0]
+	const endConf = periodTable[endPeriod] || [17, 0]
 	const [endHour, endMinute] = endConf
 	// Each period is 50 minutes long. The end period defines the start of the last slot.
 	// So we add 50 minutes to the start time of the end period.
@@ -30,7 +34,12 @@ function getLessonTime(baseDate: Date, startPeriod: string, endPeriod: string): 
 	return [start, end]
 }
 
-export function generateICS(lessons: Lesson[], semesterStart: string, semesterEnd: string): string {
+export function generateICS(
+	lessons: Lesson[],
+	semesterStart: string,
+	semesterEnd: string,
+	periodTable: Record<string, [number, number]>,
+): string {
 	const now = new Date()
 	const stamp = formatICSDate(now) + 'Z'
 
@@ -78,7 +87,7 @@ export function generateICS(lessons: Lesson[], semesterStart: string, semesterEn
 		// Check if first occurrence is after semester end
 		if (firstOccurrence > endDate) return
 
-		const [start, end] = getLessonTime(firstOccurrence, lesson.startPeriod, lesson.endPeriod)
+		const [start, end] = getLessonTime(firstOccurrence, lesson.startPeriod, lesson.endPeriod, periodTable)
 
 		// Create unique UID for event
 		const uid = `${lesson.id}-${stamp}@timetable.app`

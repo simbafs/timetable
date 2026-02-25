@@ -6,6 +6,7 @@ export async function exportToCalendar(
 	calendarName: string,
 	lessons: Lesson[],
 	includeWeekNumbers: boolean = true,
+	school: string = 'nycu',
 ) {
 	const lessonsData = lessons.map(l => [l.name, l.location, String(l.day + 1), l.startPeriod, l.endPeriod])
 
@@ -17,7 +18,13 @@ export async function exportToCalendar(
 	const response = await fetch('/api/calendar', {
 		method: 'POST',
 		headers,
-		body: JSON.stringify({ semester, calendar: calendarName, lessons: lessonsData, includeWeekNumbers }),
+		body: JSON.stringify({
+			semester,
+			calendar: calendarName,
+			lessons: lessonsData,
+			includeWeekNumbers,
+			school,
+		}),
 	})
 
 	return await response.json()

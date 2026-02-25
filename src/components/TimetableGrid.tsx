@@ -1,14 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Lesson } from '../types'
-import { COLORS, DAY_LABELS, PERIOD_LABELS, PERIOD_ORDER } from '../utils/constants'
+import { getPeriodLabels, getPeriodOrder, type SchoolConfig } from '../utils/config'
+import { COLORS, DAY_LABELS } from '../utils/constants'
 
 interface TimetableGridProps {
 	lessons?: Lesson[]
 	onLessonsChange?: (lessons: Lesson[]) => void
 	readOnly?: boolean
+	schoolConfig: SchoolConfig
 }
 
-export default function TimetableGrid({ lessons, onLessonsChange, readOnly = false }: TimetableGridProps) {
+export default function TimetableGrid({
+	lessons,
+	onLessonsChange,
+	readOnly = false,
+	schoolConfig,
+}: TimetableGridProps) {
+	const PERIOD_ORDER = getPeriodOrder(schoolConfig)
+	const PERIOD_LABELS = getPeriodLabels(schoolConfig)
+
 	const [internalLessons, setInternalLessons] = useState<Lesson[]>([])
 	const modalRef = useRef<HTMLDialogElement>(null)
 
@@ -203,26 +213,26 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 		const height = (endIdx - startIdx + 1) * 41 - 1
 		const top = startIdx * 41
 
-		// Grid has 8 columns (60px sidebar + 7 days) and 7 gaps of 1px
-		// Total available width for 7 days = 100% - 60px (sidebar) - 7px (gaps)
-		// Single day width = (100% - 67px) / 7
+		// Grid has 8 columns (85px sidebar + 7 days) and 7 gaps of 1px
+		// Total available width for 7 days = 100% - 85px (sidebar) - 7px (gaps)
+		// Single day width = (100% - 92px) / 7
 		//
 		// Left position calculation:
-		// Base offset = 60px (sidebar) + 1px (first gap) = 61px
-		// Stride per day = day width + 1px gap = (100% - 67px)/7 + 1px = (100% - 60px)/7
+		// Base offset = 85px (sidebar) + 1px (first gap) = 86px
+		// Stride per day = day width + 1px gap = (100% - 92px)/7 + 1px = (100% - 85px)/7
 
 		return {
 			top: `${top}px`,
 			height: `${height}px`,
-			left: `calc(61px + ((100% - 60px) / 7) * ${lesson.day})`,
-			width: `calc((100% - 67px) / 7)`,
+			left: `calc(86px + ((100% - 85px) / 7) * ${lesson.day})`,
+			width: `calc((100% - 92px) / 7)`,
 		}
 	}
 
 	return (
 		<div className="overflow-x-auto">
 			<div className="min-w-[800px]">
-				<div className="grid grid-cols-[60px_repeat(7,1fr)] gap-px bg-zinc-200 border-b border-zinc-200">
+				<div className="grid grid-cols-[85px_repeat(7,1fr)] gap-px bg-zinc-200 border-b border-zinc-200">
 					<div className="bg-zinc-50/50 p-2 text-center text-xs font-medium text-zinc-400 border border-zinc-200"></div>
 					{DAY_LABELS.map(day => (
 						<div
@@ -236,9 +246,10 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 
 				<div className="relative" onMouseUp={handleMouseUp}>
 					{PERIOD_ORDER.map(period => (
-						<div key={period} className="grid grid-cols-[60px_repeat(7,1fr)] gap-px bg-zinc-200">
-							<div className="flex h-10 min-w-[60px] items-center justify-center bg-zinc-50/50 text-xs font-medium text-zinc-400 border border-zinc-200">
-								{PERIOD_LABELS[period]}
+						<div key={period} className="grid grid-cols-[85px_repeat(7,1fr)] gap-px bg-zinc-200">
+							<div className="flex flex-col h-10 min-w-[85px] items-center justify-center bg-zinc-50/50 font-medium text-zinc-400 border border-zinc-200 leading-none">
+								<span className="font-bold text-zinc-600 mb-0.5">{period}</span>
+								<span className="text-xs opacity-80">{PERIOD_LABELS[period]}</span>
 							</div>
 							{Array.from({ length: 7 }).map((_, day) => {
 								const cellKey = `${day}-${period}`

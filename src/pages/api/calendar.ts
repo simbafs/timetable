@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro'
 import { type Auth, google } from 'googleapis'
-import { PERIOD_TABLE } from '../../utils/constants'
+import { DEFAULT_SCHOOL_ID, getPeriodTable, getSchoolConfig } from '../../utils/config'
 
 export const prerender = false
 
@@ -20,11 +20,16 @@ function formatDateTime(date: Date, hours: number, minutes: number): string {
 	return `${dateStr}T${timeStr}${TIMEZONE_OFFSET}`
 }
 
-function getLessonTime(day: Date, start: string, end: string): [string, string] {
-	const startTable = PERIOD_TABLE[start] || [0, 0]
+function getLessonTime(
+	day: Date,
+	start: string,
+	end: string,
+	periodTable: Record<string, [number, number]>,
+): [string, string] {
+	const startTable = periodTable[start] || [0, 0]
 	const startTime = formatDateTime(day, startTable[0], startTable[1])
 
-	const endTable = PERIOD_TABLE[end] || [0, 0]
+	const endTable = periodTable[end] || [0, 0]
 	let endHours = endTable[0]
 	let endMinutes = endTable[1] + 50
 	if (endMinutes >= 60) {
@@ -75,10 +80,11 @@ async function addLessonEvent(
 	dow: number,
 	start: string,
 	end: string,
+	periodTable: Record<string, [number, number]>,
 ) {
 	// Calculate the first occurrence date based on semester start (which is usually Mon)
 	const startDateBase = setDayOfWeek(new Date(semester.start), dow)
-	const [startDateTime, endDateTime] = getLessonTime(startDateBase, start, end)
+	const [startDateTime, endDateTime] = getLessonTime(startDateBase, start, end, periodTable)
 
 	const calendar = google.calendar({ version: 'v3', auth })
 
@@ -140,6 +146,7 @@ interface RequestBody {
 	calendar: string
 	lessons: [string, string, number | string, string, string][]
 	includeWeekNumbers?: boolean
+	school?: string
 }
 
 export const POST: APIRoute = async ({ request }) => {
@@ -169,6 +176,16 @@ export const POST: APIRoute = async ({ request }) => {
 
 			const calendarId = await findCalendarByName(oauth2Client, data.calendar)
 
+			const schoolId = data.school || DEFAULT_SCHOOL_ID
+			const config = getSchoolConfig(schoolId)
+			if (!config) {
+				return new Response(JSON.stringify({ error: 'Invalid school ID' }), {
+					status: 400,
+					headers: { 'Content-Type': 'application/json' },
+				})
+			}
+			const periodTable = getPeriodTable(config)
+
 			for (const item of data.lessons) {
 				const [name, location, dow, start, end] = item
 				const dayOfWeek = typeof dow === 'string' ? parseInt(dow, 10) : dow
@@ -184,6 +201,7 @@ export const POST: APIRoute = async ({ request }) => {
 					dayOfWeek,
 					startPeriod,
 					endPeriod,
+					periodTable,
 				)
 			}
 
