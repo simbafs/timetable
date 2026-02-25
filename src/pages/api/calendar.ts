@@ -2,20 +2,28 @@ import { google } from 'googleapis'
 
 export const prerender = false
 
-const PERIOD_TABLE = {
+const PERIOD_TABLE: Record<string, [number, number]> = {
+	y: [6, 0],
+	z: [7, 0],
 	1: [8, 0],
 	2: [9, 0],
 	3: [10, 10],
 	4: [11, 10],
-	5: [13, 10],
-	6: [14, 10],
-	7: [15, 20],
-	8: [16, 20],
-	9: [17, 20],
-	10: [18, 20],
+	n: [12, 20],
+	5: [13, 20],
+	6: [14, 20],
+	7: [15, 30],
+	8: [16, 30],
+	9: [17, 30],
+	a: [18, 30],
+	b: [19, 30],
+	c: [20, 30],
+	d: [21, 30],
 }
 
-function getLessonTime(day, start, end) {
+const PERIOD_ORDER = ['y', 'z', '1', '2', '3', '4', 'n', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd']
+
+function getLessonTime(day: Date, start: string, end: string) {
 	day.setMinutes(0)
 	day.setSeconds(0)
 	day.setMilliseconds(0)
@@ -37,7 +45,16 @@ function setDayOfWeek(day, dow) {
 	return d
 }
 
-async function addLessonEvent(auth, calendarId, semester, name, dow, start, end) {
+async function addLessonEvent(
+	auth: any,
+	calendarId: string,
+	semester: { start: Date; end: Date },
+	name: string,
+	location: string,
+	dow: number,
+	start: string,
+	end: string,
+) {
 	const [startDate, endDate] = getLessonTime(setDayOfWeek(new Date(semester.start), dow), start, end)
 
 	const calendar = google.calendar({ version: 'v3', auth })
@@ -49,6 +66,7 @@ async function addLessonEvent(auth, calendarId, semester, name, dow, start, end)
 		recurringEvent: true,
 		requestBody: {
 			summary: name,
+			location,
 			start: { dateTime: startDate.toISOString() },
 			end: { dateTime: endDate.toISOString() },
 			recurrence,
@@ -106,24 +124,15 @@ export async function POST({ request }) {
 
 			const data = await request.json()
 			const semester = {
-				start: new Date(...data.semester),
-				end: new Date(...data.semester),
+				start: new Date(data.semester[0], data.semester[1], data.semester[2]),
+				end: new Date(data.semester[3], data.semester[4], data.semester[5]),
 			}
-			semester.end.setDate(semester.end.getDate() + 1)
 
 			const calendarId = await findCalendarByName(oauth2Client, data.calendar)
 
 			for (const item of data.lessons) {
-				const [name, dow, start, end] = item
-				await addLessonEvent(
-					oauth2Client,
-					calendarId,
-					semester,
-					name,
-					parseInt(dow),
-					parseInt(start),
-					parseInt(end),
-				)
+				const [name, location, dow, start, end] = item
+				await addLessonEvent(oauth2Client, calendarId, semester, name, location, parseInt(dow), start, end)
 			}
 
 			await createWeekNumbers(oauth2Client, calendarId, semester.start)
