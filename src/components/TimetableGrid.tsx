@@ -119,8 +119,8 @@ export default function TimetableGrid({
 	const getLessonStyle = (lesson: Lesson) => {
 		const startIdx = PERIOD_ORDER.indexOf(lesson.startPeriod)
 		const endIdx = PERIOD_ORDER.indexOf(lesson.endPeriod)
-		const height = (endIdx - startIdx + 1) * 41 - 1
-		const top = startIdx * 41
+		const height = (endIdx - startIdx + 1) * 40 - 1
+		const top = startIdx * 40
 
 		// Grid has 8 columns (85px sidebar + 7 days) and 7 gaps of 1px
 		// Total available width for 7 days = 100% - 85px (sidebar) - 7px (gaps)
