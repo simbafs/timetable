@@ -16,6 +16,7 @@ export default function TimetableApp() {
 	const [semesterStart, setSemesterStart] = useState('2025-02-17')
 	const [semesterEnd, setSemesterEnd] = useState('2025-06-20')
 	const [calendarName, setCalendarName] = useState('課表')
+	const [includeWeekNumbers, setIncludeWeekNumbers] = useState(true)
 
 	useEffect(() => {
 		const storedToken = localStorage.getItem('google_access_token')
@@ -121,7 +122,7 @@ export default function TimetableApp() {
 		const semester = [...parseDate(semesterStart), ...parseDate(semesterEnd)]
 
 		try {
-			const result = await exportToCalendar(accessToken, semester, calendarName, lessons)
+			const result = await exportToCalendar(accessToken, semester, calendarName, lessons, includeWeekNumbers)
 			if (result?.error) {
 				alert(result.error)
 			} else if (result?.success) {
@@ -225,6 +226,19 @@ export default function TimetableApp() {
 								onChange={e => setSemesterEnd(e.target.value)}
 								className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
 							/>
+						</div>
+
+						<div className="flex items-center gap-2">
+							<input
+								type="checkbox"
+								id="includeWeekNumbers"
+								checked={includeWeekNumbers}
+								onChange={e => setIncludeWeekNumbers(e.target.checked)}
+								className="h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500"
+							/>
+							<label htmlFor="includeWeekNumbers" className="text-sm font-medium text-zinc-600">
+								新增週次事件（如：第 1 周）
+							</label>
 						</div>
 
 						<div className="border-t border-zinc-100 pt-4 mt-4">

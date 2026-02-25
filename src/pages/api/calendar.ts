@@ -139,6 +139,7 @@ interface RequestBody {
 	semester: [number, number, number, number, number, number]
 	calendar: string
 	lessons: [string, string, number | string, string, string][]
+	includeWeekNumbers?: boolean
 }
 
 export const POST: APIRoute = async ({ request }) => {
@@ -186,7 +187,9 @@ export const POST: APIRoute = async ({ request }) => {
 				)
 			}
 
-			await createWeekNumbers(oauth2Client, calendarId, semester.start)
+			if (data.includeWeekNumbers !== false) {
+				await createWeekNumbers(oauth2Client, calendarId, semester.start)
+			}
 
 			return new Response(JSON.stringify({ success: true }), {
 				status: 200,
