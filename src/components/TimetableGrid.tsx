@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Lesson } from '../types'
 import { COLORS, DAY_LABELS, PERIOD_LABELS, PERIOD_ORDER } from '../utils/constants'
 
@@ -10,6 +10,7 @@ interface TimetableGridProps {
 
 export default function TimetableGrid({ lessons, onLessonsChange, readOnly = false }: TimetableGridProps) {
 	const [internalLessons, setInternalLessons] = useState<Lesson[]>([])
+	const modalRef = useRef<HTMLDialogElement>(null)
 
 	useEffect(() => {
 		if (lessons) {
@@ -27,7 +28,6 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 	const [isDragging, setIsDragging] = useState(false)
 	const [dragStart, setDragStart] = useState<{ day: number; period: string } | null>(null)
 	const [dragEnd, setDragEnd] = useState<{ day: number; period: string } | null>(null)
-	const [showModal, setShowModal] = useState(false)
 	const [newLesson, setNewLesson] = useState({ name: '', location: '' })
 	const [editingLessonId, setEditingLessonId] = useState<string | null>(null)
 	const [collisionError, setCollisionError] = useState(false)
@@ -63,7 +63,7 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 			const endIdx = Math.max(PERIOD_ORDER.indexOf(dragStart.period), PERIOD_ORDER.indexOf(dragEnd.period))
 
 			if (!checkCollision(dragStart.day, PERIOD_ORDER[startIdx], PERIOD_ORDER[endIdx])) {
-				setShowModal(true)
+				modalRef.current?.showModal()
 			} else {
 				setDragStart(null)
 				setDragEnd(null)
@@ -115,7 +115,7 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 			updateLessons(newLessons)
 		}
 
-		setShowModal(false)
+		modalRef.current?.close()
 		setNewLesson({ name: '', location: '' })
 		setDragStart(null)
 		setDragEnd(null)
@@ -124,7 +124,7 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 	}
 
 	const handleCloseModal = () => {
-		setShowModal(false)
+		modalRef.current?.close()
 		setNewLesson({ name: '', location: '' })
 		setDragStart(null)
 		setDragEnd(null)
@@ -242,7 +242,7 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 								e.stopPropagation()
 								setEditingLessonId(lesson.id)
 								setNewLesson({ name: lesson.name, location: lesson.location })
-								setShowModal(true)
+								modalRef.current?.showModal()
 							}}
 						>
 							<span className="truncate">{lesson.name}</span>
@@ -264,80 +264,82 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 				</div>
 			</div>
 
-			{showModal && (
-				<div
-					className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-					onClick={handleCloseModal}
-				>
-					<div className="w-80 rounded-2xl bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-						<h3 className="mb-4 text-lg font-semibold text-zinc-800">
-							{editingLessonId ? '編輯課程' : '新增課程'}
-						</h3>
-						<div className="space-y-4">
-							{collisionError && (
-								<div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-									該時段已有課程，無法重疊
-								</div>
-							)}
-							<div>
-								<label className="mb-1.5 block text-sm font-medium text-zinc-600">課程名稱</label>
-								<input
-									type="text"
-									placeholder="例如：微積分"
-									className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-									value={newLesson.name}
-									onChange={e => {
-										setNewLesson({ ...newLesson, name: e.target.value })
-										setCollisionError(false)
-									}}
-									autoFocus
-									disabled={readOnly}
-								/>
+			<dialog
+				ref={modalRef}
+				className="backdrop:bg-black/50 p-0 bg-transparent rounded-2xl"
+				onClick={e => {
+					if (e.target === modalRef.current) handleCloseModal()
+				}}
+				onClose={handleCloseModal}
+			>
+				<div className="w-80 rounded-2xl bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+					<h3 className="mb-4 text-lg font-semibold text-zinc-800">
+						{editingLessonId ? '編輯課程' : '新增課程'}
+					</h3>
+					<div className="space-y-4">
+						{collisionError && (
+							<div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+								該時段已有課程，無法重疊
 							</div>
-							<div>
-								<label className="mb-1.5 block text-sm font-medium text-zinc-600">地點（可選）</label>
-								<input
-									type="text"
-									placeholder="例如：綜院 201"
-									className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-									value={newLesson.location}
-									onChange={e => setNewLesson({ ...newLesson, location: e.target.value })}
-									disabled={readOnly}
-								/>
-							</div>
+						)}
+						<div>
+							<label className="mb-1.5 block text-sm font-medium text-zinc-600">課程名稱</label>
+							<input
+								type="text"
+								placeholder="例如：微積分"
+								className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+								value={newLesson.name}
+								onChange={e => {
+									setNewLesson({ ...newLesson, name: e.target.value })
+									setCollisionError(false)
+								}}
+								autoFocus
+								disabled={readOnly}
+							/>
 						</div>
-						<div className="mt-6 flex gap-3">
-							{!readOnly && editingLessonId ? (
-								<button
-									type="button"
-									className="flex-1 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
-									onClick={() => handleDeleteLesson(editingLessonId)}
-								>
-									刪除
-								</button>
-							) : (
-								<button
-									type="button"
-									className="flex-1 rounded-xl border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50"
-									onClick={handleCloseModal}
-								>
-									取消
-								</button>
-							)}
-							{!readOnly && (
-								<button
-									type="button"
-									className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
-									onClick={handleAddLesson}
-									disabled={!newLesson.name}
-								>
-									{editingLessonId ? '儲存' : '確認'}
-								</button>
-							)}
+						<div>
+							<label className="mb-1.5 block text-sm font-medium text-zinc-600">地點（可選）</label>
+							<input
+								type="text"
+								placeholder="例如：綜院 201"
+								className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+								value={newLesson.location}
+								onChange={e => setNewLesson({ ...newLesson, location: e.target.value })}
+								disabled={readOnly}
+							/>
 						</div>
 					</div>
+					<div className="mt-6 flex gap-3">
+						{!readOnly && editingLessonId ? (
+							<button
+								type="button"
+								className="flex-1 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+								onClick={() => handleDeleteLesson(editingLessonId)}
+							>
+								刪除
+							</button>
+						) : (
+							<button
+								type="button"
+								className="flex-1 rounded-xl border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50"
+								onClick={handleCloseModal}
+							>
+								取消
+							</button>
+						)}
+						{!readOnly && (
+							<button
+								type="button"
+								className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+								onClick={handleAddLesson}
+								disabled={!newLesson.name}
+							>
+								{editingLessonId ? '儲存' : '確認'}
+							</button>
+						)}
+					</div>
 				</div>
-			)}
+			</dialog>
 		</div>
 	)
 }
