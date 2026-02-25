@@ -10,8 +10,5 @@ export default defineConfig({
 	integrations: [react()],
 	vite: {
 		plugins: [tailwindcss()],
-		define: {
-			'import.meta.env.PUBLIC_GOOGLE_CLIENT_ID': JSON.stringify(process.env.GOOGLE_CLIENT_ID),
-		},
 	},
 })

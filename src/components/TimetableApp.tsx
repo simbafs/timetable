@@ -4,13 +4,11 @@ import { exportToCalendar } from '../utils/calendar'
 import { generateICS } from '../utils/ics'
 import TimetableGrid from './TimetableGrid'
 
-const CLIENT_ID = import.meta.env.PUBLIC_GOOGLE_CLIENT_ID
-const SCOPES = 'https://www.googleapis.com/auth/calendar'
 const DISABLE_AUTH = import.meta.env.PUBLIC_DISABLE_AUTH === 'true'
 
 export default function TimetableApp() {
 	const [accessToken, setAccessToken] = useState<string | null>(null)
-	const [userInfo, setUserInfo] = useState<string>('')
+	const [userInfo, setUserInfo] = useState<{ name: string; email: string; picture: string } | null>(null)
 	const [lessons, setLessons] = useState<Lesson[]>([])
 	const [loading, setLoading] = useState(false)
 	const [isEditing, setIsEditing] = useState(false)
@@ -21,18 +19,32 @@ export default function TimetableApp() {
 
 	useEffect(() => {
 		const storedToken = localStorage.getItem('google_access_token')
+		const storedIdToken = localStorage.getItem('google_id_token')
+
 		if (storedToken) {
 			setAccessToken(storedToken)
-			updateUserInfo(storedToken)
+		}
+
+		if (storedIdToken) {
+			updateUserInfo(storedIdToken)
 		}
 
 		if (window.location.hash) {
 			const params = new URLSearchParams(window.location.hash.substring(1))
 			const token = params.get('access_token')
+			const idToken = params.get('id_token')
+
 			if (token) {
 				localStorage.setItem('google_access_token', token)
 				setAccessToken(token)
-				updateUserInfo(token)
+			}
+
+			if (idToken) {
+				localStorage.setItem('google_id_token', idToken)
+				updateUserInfo(idToken)
+			}
+
+			if (token || idToken) {
 				window.location.hash = ''
 				// Optional: clear URL without reload
 				window.history.replaceState(null, '', window.location.pathname)
@@ -52,28 +64,39 @@ export default function TimetableApp() {
 
 	const updateUserInfo = (token: string) => {
 		try {
-			const payload = JSON.parse(atob(token.split('.')[1]))
-			setUserInfo(payload.email || payload.sub)
+			// Decode JWT ID token
+			const base64Url = token.split('.')[1]
+			const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+			const jsonPayload = decodeURIComponent(
+				window
+					.atob(base64)
+					.split('')
+					.map(function (c) {
+						return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+					})
+					.join(''),
+			)
+
+			const payload = JSON.parse(jsonPayload)
+			setUserInfo({
+				name: payload.name || payload.email?.split('@')[0] || 'User',
+				email: payload.email || '',
+				picture: payload.picture || '',
+			})
 		} catch (e) {
 			console.error('Failed to parse token', e)
 		}
 	}
 
 	const handleLogin = () => {
-		const params = new URLSearchParams({
-			client_id: CLIENT_ID,
-			redirect_uri: `${window.location.origin}/api/auth/callback`,
-			response_type: 'token',
-			scope: SCOPES,
-			prompt: 'consent',
-		})
-		window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`
+		window.location.href = '/api/auth/signin'
 	}
 
 	const handleLogout = () => {
 		localStorage.removeItem('google_access_token')
+		localStorage.removeItem('google_id_token')
 		setAccessToken(null)
-		setUserInfo('')
+		setUserInfo(null)
 	}
 
 	const handleLessonsChange = (newLessons: Lesson[]) => {
@@ -235,14 +258,22 @@ export default function TimetableApp() {
 									</button>
 								) : (
 									<div className="bg-zinc-50 rounded-xl p-4 border border-zinc-100">
-										{!DISABLE_AUTH && (
+										{!DISABLE_AUTH && userInfo && (
 											<div className="flex items-center justify-between mb-3">
 												<div className="flex items-center gap-2">
-													<div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 text-xs">
-														{userInfo.charAt(0).toUpperCase()}
-													</div>
+													{userInfo.picture ? (
+														<img
+															src={userInfo.picture}
+															alt={userInfo.name}
+															className="w-6 h-6 rounded-full object-cover"
+														/>
+													) : (
+														<div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 text-xs">
+															{userInfo.name.charAt(0).toUpperCase()}
+														</div>
+													)}
 													<span className="text-sm font-medium text-zinc-700 truncate max-w-[150px]">
-														{userInfo}
+														{userInfo.name}
 													</span>
 												</div>
 												<button
