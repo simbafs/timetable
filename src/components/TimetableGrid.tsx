@@ -235,7 +235,7 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 					{currentLessons.map((lesson, idx) => (
 						<div
 							key={lesson.id}
-							className={`absolute z-10 flex flex-col justify-center overflow-hidden rounded px-1 py-0.5 text-xs font-medium text-white shadow-sm ${COLORS[idx % COLORS.length]}`}
+							className={`absolute z-10 flex flex-col items-center justify-center overflow-hidden rounded px-1 py-0.5 font-bold text-white shadow-sm ${COLORS[idx % COLORS.length]}`}
 							style={getLessonStyle(lesson)}
 							onClick={e => {
 								if (readOnly) return
@@ -245,8 +245,8 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 								modalRef.current?.showModal()
 							}}
 						>
-							<span className="truncate">{lesson.name}</span>
-							{lesson.location && <span className="text-white/70 truncate">{lesson.location}</span>}
+							<span className="text-3xl">{lesson.name}</span>
+							{lesson.location && <span className="text-white/70 text-xl">{lesson.location}</span>}
 							{!readOnly && (
 								<button
 									type="button"
