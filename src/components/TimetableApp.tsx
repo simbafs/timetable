@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Lesson } from '../types'
 import { exportToCalendar } from '../utils/calendar'
+import { generateICS } from '../utils/ics'
 import TimetableGrid from './TimetableGrid'
 
 const CLIENT_ID = import.meta.env.PUBLIC_GOOGLE_CLIENT_ID
@@ -130,6 +131,12 @@ export default function TimetableApp() {
 			<div className="flex justify-between items-center mb-6">
 				<h1 className="text-2xl font-bold text-zinc-800">我的課表</h1>
 				<div className="flex gap-2">
+					<button
+						onClick={() => setShowExportModal(true)}
+						className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
+					>
+						匯出
+					</button>
 					{!isEditing ? (
 						<button
 							onClick={() => setIsEditing(true)}
@@ -138,20 +145,12 @@ export default function TimetableApp() {
 							編輯
 						</button>
 					) : (
-						<>
-							<button
-								onClick={() => setShowExportModal(true)}
-								className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
-							>
-								匯出
-							</button>
-							<button
-								onClick={() => setIsEditing(false)}
-								className="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50"
-							>
-								完成
-							</button>
-						</>
+						<button
+							onClick={() => setIsEditing(false)}
+							className="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50"
+						>
+							完成
+						</button>
 					)}
 				</div>
 			</div>
