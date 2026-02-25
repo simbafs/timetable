@@ -80,7 +80,7 @@ export default function TimetableApp() {
 		localStorage.setItem('timetable_lessons', JSON.stringify(newLessons))
 	}
 
-	const handleExport = async (e: React.FormEvent) => {
+	const handleExport = async (e: React.SyntheticEvent) => {
 		e.preventDefault()
 		if (!accessToken && !DISABLE_AUTH) {
 			alert('請先登入')
@@ -111,6 +111,18 @@ export default function TimetableApp() {
 		} finally {
 			setLoading(false)
 		}
+	}
+
+	const handleDownloadICS = () => {
+		const icsContent = generateICS(lessons, semesterStart, semesterEnd)
+		const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' })
+		const url = window.URL.createObjectURL(blob)
+		const link = document.createElement('a')
+		link.href = url
+		link.setAttribute('download', 'timetable.ics')
+		document.body.appendChild(link)
+		link.click()
+		document.body.removeChild(link)
 	}
 
 	return (
@@ -174,100 +186,103 @@ export default function TimetableApp() {
 							</button>
 						</div>
 
-						{!accessToken && !DISABLE_AUTH ? (
-							<div className="text-center py-6">
-								<p className="mb-4 text-zinc-600">請先登入 Google 帳號以使用匯出功能</p>
-								<button
-									onClick={handleLogin}
-									className="rounded-xl bg-zinc-900 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
-								>
-									登入 Google
-								</button>
+						<div className="space-y-4">
+							<div>
+								<label className="block text-sm font-medium text-zinc-600 mb-1.5">學期開始</label>
+								<input
+									type="date"
+									value={semesterStart}
+									onChange={e => setSemesterStart(e.target.value)}
+									className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+								/>
 							</div>
-						) : (
-							<form onSubmit={handleExport} className="space-y-4">
-								{!DISABLE_AUTH && (
-									<div className="flex items-center justify-between p-3 bg-zinc-50 rounded-xl mb-4">
-										<div className="flex items-center gap-3">
-											<div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
-												<svg
-													className="w-4 h-4"
-													fill="none"
-													stroke="currentColor"
-													viewBox="0 0 24 24"
-												>
-													<path
-														strokeLinecap="round"
-														strokeLinejoin="round"
-														strokeWidth="2"
-														d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-													/>
-												</svg>
-											</div>
-											<div className="text-sm">
-												<p className="font-medium text-zinc-700">{userInfo}</p>
-												<p className="text-xs text-zinc-400">已連結帳號</p>
-											</div>
-										</div>
+							<div>
+								<label className="block text-sm font-medium text-zinc-600 mb-1.5">學期結束</label>
+								<input
+									type="date"
+									value={semesterEnd}
+									onChange={e => setSemesterEnd(e.target.value)}
+									className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+								/>
+							</div>
+
+							<div className="border-t border-zinc-100 pt-4 mt-4">
+								<h4 className="text-sm font-semibold text-zinc-800 mb-3">匯出選項</h4>
+
+								<div className="space-y-3">
+									<button
+										onClick={handleDownloadICS}
+										className="w-full flex items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
+									>
+										<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												strokeWidth="2"
+												d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+											/>
+										</svg>
+										下載 .ics 檔案
+									</button>
+
+									{!accessToken && !DISABLE_AUTH ? (
 										<button
-											type="button"
-											onClick={handleLogout}
-											className="text-xs text-red-500 hover:text-red-700 font-medium"
+											onClick={handleLogin}
+											className="w-full flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
 										>
-											登出
+											<svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+												<path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z" />
+											</svg>
+											登入 Google 以匯入日曆
 										</button>
-									</div>
-								)}
+									) : (
+										<div className="bg-zinc-50 rounded-xl p-4 border border-zinc-100">
+											{!DISABLE_AUTH && (
+												<div className="flex items-center justify-between mb-3">
+													<div className="flex items-center gap-2">
+														<div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 text-xs">
+															{userInfo.charAt(0).toUpperCase()}
+														</div>
+														<span className="text-sm font-medium text-zinc-700 truncate max-w-[150px]">
+															{userInfo}
+														</span>
+													</div>
+													<button
+														onClick={handleLogout}
+														className="text-xs text-red-500 hover:text-red-700 font-medium"
+													>
+														登出
+													</button>
+												</div>
+											)}
 
-								<div>
-									<label className="block text-sm font-medium text-zinc-600 mb-1.5">學期開始</label>
-									<input
-										type="date"
-										value={semesterStart}
-										onChange={e => setSemesterStart(e.target.value)}
-										className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-									/>
-								</div>
-								<div>
-									<label className="block text-sm font-medium text-zinc-600 mb-1.5">學期結束</label>
-									<input
-										type="date"
-										value={semesterEnd}
-										onChange={e => setSemesterEnd(e.target.value)}
-										className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-									/>
-								</div>
-								<div>
-									<label className="block text-sm font-medium text-zinc-600 mb-1.5">日曆名稱</label>
-									<input
-										type="text"
-										value={calendarName}
-										onChange={e => setCalendarName(e.target.value)}
-										className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-									/>
-								</div>
+											<div className="mb-3">
+												<label className="block text-xs font-medium text-zinc-500 mb-1">
+													日曆名稱
+												</label>
+												<input
+													type="text"
+													value={calendarName}
+													onChange={e => setCalendarName(e.target.value)}
+													className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+												/>
+											</div>
 
-								<div className="pt-4 flex gap-3">
-									<button
-										type="button"
-										onClick={() => setShowExportModal(false)}
-										className="flex-1 rounded-xl border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
-									>
-										取消
-									</button>
-									<button
-										type="submit"
-										disabled={loading}
-										className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-									>
-										{loading && (
-											<div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-										)}
-										匯入 Google 日曆
-									</button>
+											<button
+												onClick={handleExport}
+												disabled={loading}
+												className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+											>
+												{loading && (
+													<div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+												)}
+												匯入 Google 日曆
+											</button>
+										</div>
+									)}
 								</div>
-							</form>
-						)}
+							</div>
+						</div>
 					</div>
 				</div>
 			)}

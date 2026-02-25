@@ -1,27 +1,7 @@
 import { google } from 'googleapis'
+import { PERIOD_TABLE } from '../../utils/constants'
 
 export const prerender = false
-
-const PERIOD_TABLE: Record<string, [number, number]> = {
-	y: [6, 0],
-	z: [7, 0],
-	1: [8, 0],
-	2: [9, 0],
-	3: [10, 10],
-	4: [11, 10],
-	n: [12, 20],
-	5: [13, 20],
-	6: [14, 20],
-	7: [15, 30],
-	8: [16, 30],
-	9: [17, 30],
-	a: [18, 30],
-	b: [19, 30],
-	c: [20, 30],
-	d: [21, 30],
-}
-
-const PERIOD_ORDER = ['y', 'z', '1', '2', '3', '4', 'n', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd']
 
 function getLessonTime(day: Date, start: string, end: string) {
 	const baseDate = new Date(day)
