@@ -24,24 +24,25 @@ const PERIOD_TABLE: Record<string, [number, number]> = {
 const PERIOD_ORDER = ['y', 'z', '1', '2', '3', '4', 'n', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd']
 
 function getLessonTime(day: Date, start: string, end: string) {
-	day.setMinutes(0)
-	day.setSeconds(0)
-	day.setMilliseconds(0)
+	const baseDate = new Date(day)
+	baseDate.setMinutes(0)
+	baseDate.setSeconds(0)
+	baseDate.setMilliseconds(0)
 
-	const startDate = new Date(day)
+	const startDate = new Date(baseDate)
 	startDate.setHours(PERIOD_TABLE[start][0])
 	startDate.setMinutes(PERIOD_TABLE[start][1])
 
-	const endDate = new Date(day)
+	const endDate = new Date(baseDate)
 	endDate.setHours(PERIOD_TABLE[end][0])
 	endDate.setMinutes(PERIOD_TABLE[end][1] + 50)
 
 	return [startDate, endDate]
 }
 
-function setDayOfWeek(day, dow) {
+function setDayOfWeek(day: Date, dow: number) {
 	const d = new Date(day)
-	d.setDate(parseInt(String(d.getDate())) - parseInt(String(d.getDay())) + parseInt(String(dow)))
+	d.setDate(d.getDate() - d.getDay() + dow)
 	return d
 }
 

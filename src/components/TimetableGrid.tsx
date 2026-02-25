@@ -1,54 +1,29 @@
 import { useCallback, useEffect, useState } from 'react'
-
-const PERIOD_ORDER = ['y', 'z', '1', '2', '3', '4', 'n', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd']
-
-const PERIOD_LABELS: Record<string, string> = {
-	y: 'Y',
-	z: 'Z',
-	1: '1',
-	2: '2',
-	3: '3',
-	4: '4',
-	n: 'N',
-	5: '5',
-	6: '6',
-	7: '7',
-	8: '8',
-	9: '9',
-	a: 'A',
-	b: 'B',
-	c: 'C',
-	d: 'D',
-}
-
-const DAY_LABELS = ['週一', '週二', '週三', '週四', '週五', '週六', '週日']
-
-const COLORS = [
-	'bg-blue-500',
-	'bg-emerald-500',
-	'bg-amber-500',
-	'bg-rose-500',
-	'bg-violet-500',
-	'bg-cyan-500',
-	'bg-orange-500',
-]
-
-interface Lesson {
-	id: string
-	name: string
-	location: string
-	day: number
-	startPeriod: string
-	endPeriod: string
-}
+import type { Lesson } from '../types'
+import { COLORS, DAY_LABELS, PERIOD_LABELS, PERIOD_ORDER } from '../utils/constants'
 
 interface TimetableGridProps {
 	lessons?: Lesson[]
 	onLessonsChange?: (lessons: Lesson[]) => void
+	readOnly?: boolean
 }
 
-export default function TimetableGrid({ lessons: initialLessons = [], onLessonsChange }: TimetableGridProps) {
-	const [lessons, setLessons] = useState<Lesson[]>(initialLessons)
+export default function TimetableGrid({ lessons, onLessonsChange, readOnly = false }: TimetableGridProps) {
+	const [internalLessons, setInternalLessons] = useState<Lesson[]>([])
+
+	useEffect(() => {
+		if (lessons) {
+			setInternalLessons(lessons)
+		}
+	}, [lessons])
+
+	const currentLessons = lessons || internalLessons
+
+	const updateLessons = (newLessons: Lesson[]) => {
+		setInternalLessons(newLessons)
+		onLessonsChange?.(newLessons)
+	}
+
 	const [isDragging, setIsDragging] = useState(false)
 	const [dragStart, setDragStart] = useState<{ day: number; period: string } | null>(null)
 	const [dragEnd, setDragEnd] = useState<{ day: number; period: string } | null>(null)
@@ -58,25 +33,29 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 	const [collisionError, setCollisionError] = useState(false)
 
 	useEffect(() => {
-		console.log('Timetable changed:', lessons)
-	}, [lessons])
+		console.log('Timetable changed:', currentLessons)
+	}, [currentLessons])
 
-	const handleMouseDown = useCallback((day: number, period: string) => {
-		setIsDragging(true)
-		setDragStart({ day, period })
-		setDragEnd({ day, period })
-	}, [])
+	const handleMouseDown = useCallback(
+		(day: number, period: string) => {
+			if (readOnly) return
+			setIsDragging(true)
+			setDragStart({ day, period })
+			setDragEnd({ day, period })
+		},
+		[readOnly],
+	)
 
 	const handleMouseOver = useCallback(
 		(day: number, period: string) => {
-			if (!isDragging) return
+			if (!isDragging || readOnly) return
 			setDragEnd({ day, period })
 		},
-		[isDragging],
+		[isDragging, readOnly],
 	)
 
 	const handleMouseUp = useCallback(() => {
-		if (!isDragging || !dragStart || !dragEnd) return
+		if (readOnly || !isDragging || !dragStart || !dragEnd) return
 
 		if (dragStart.day === dragEnd.day) {
 			const startIdx = Math.min(PERIOD_ORDER.indexOf(dragStart.period), PERIOD_ORDER.indexOf(dragEnd.period))
@@ -94,10 +73,10 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 	}, [isDragging, dragStart, dragEnd])
 
 	const handleAddLesson = () => {
-		if (!newLesson.name) return
+		if (readOnly || !newLesson.name) return
 
 		if (editingLessonId) {
-			const editingLesson = lessons.find(l => l.id === editingLessonId)
+			const editingLesson = currentLessons.find(l => l.id === editingLessonId)
 			if (!editingLesson) return
 
 			if (
@@ -107,12 +86,10 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 				return
 			}
 
-			const newLessons = lessons.map(l =>
+			const newLessons = currentLessons.map(l =>
 				l.id === editingLessonId ? { ...l, name: newLesson.name, location: newLesson.location } : l,
 			)
-			setLessons(newLessons)
-			onLessonsChange?.(newLessons)
-			;(window as any).setLessons?.(newLessons)
+			updateLessons(newLessons)
 		} else {
 			if (!dragStart || !dragEnd) return
 
@@ -133,10 +110,8 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 				endPeriod: PERIOD_ORDER[endIdx],
 			}
 
-			const newLessons = [...lessons, lesson]
-			setLessons(newLessons)
-			onLessonsChange?.(newLessons)
-			;(window as any).setLessons?.(newLessons)
+			const newLessons = [...currentLessons, lesson]
+			updateLessons(newLessons)
 		}
 
 		setShowModal(false)
@@ -157,10 +132,9 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 	}
 
 	const handleDeleteLesson = (id: string) => {
-		const newLessons = lessons.filter(l => l.id !== id)
-		setLessons(newLessons)
-		onLessonsChange?.(newLessons)
-		;(window as any).setLessons?.(newLessons)
+		if (readOnly) return
+		const newLessons = currentLessons.filter(l => l.id !== id)
+		updateLessons(newLessons)
 		handleCloseModal()
 	}
 
@@ -185,7 +159,7 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 		const startIdx = PERIOD_ORDER.indexOf(startPeriod)
 		const endIdx = PERIOD_ORDER.indexOf(endPeriod)
 
-		return lessons.some(l => {
+		return currentLessons.some(l => {
 			if (excludeId && l.id === excludeId) return false
 			if (l.day !== day) return false
 			const lStartIdx = PERIOD_ORDER.indexOf(l.startPeriod)
@@ -212,21 +186,6 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 		const height = (endIdx - startIdx + 1) * 41 - 1
 		const top = startIdx * 41
 
-		// The grid structure is: 60px (time) + gap(1px) + 7 * (1fr + gap(1px))
-		// Actually grid-cols is [60px, 1fr, 1fr, ...] with gap-px
-		// So total width W = 60 + 7*1fr + 7*1 (gaps)
-		// 1fr = (W - 67) / 7
-		//
-		// Left position for day d (0-6):
-		// L = 60 + 1 (first gap) + d * (1fr + 1)
-		//   = 61 + d * ((W - 67)/7 + 1)
-		//   = 61 + d * (W - 67 + 7)/7
-		//   = 61 + d * (W - 60)/7
-		//
-		// Width of each lesson:
-		// w = 1fr = (W - 67)/7
-		//
-		// Let's use percentages relative to container width (100%)
 		return {
 			top: `${top}px`,
 			height: `${height}px`,
@@ -272,12 +231,13 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 						</div>
 					))}
 
-					{lessons.map((lesson, idx) => (
+					{currentLessons.map((lesson, idx) => (
 						<div
 							key={lesson.id}
 							className={`absolute z-10 flex flex-col justify-center overflow-hidden rounded px-1 py-0.5 text-xs font-medium text-white shadow-sm ${COLORS[idx % COLORS.length]}`}
 							style={getLessonStyle(lesson)}
 							onClick={e => {
+								if (readOnly) return
 								e.stopPropagation()
 								setEditingLessonId(lesson.id)
 								setNewLesson({ name: lesson.name, location: lesson.location })
@@ -286,16 +246,18 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 						>
 							<span className="truncate">{lesson.name}</span>
 							{lesson.location && <span className="text-white/70 truncate">{lesson.location}</span>}
-							<button
-								type="button"
-								className="absolute end-0.5 top-0.5 hidden h-4 w-4 items-center justify-center rounded text-white/70 hover:bg-white/20 hover:text-white"
-								onClick={e => {
-									e.stopPropagation()
-									handleDeleteLesson(lesson.id)
-								}}
-							>
-								×
-							</button>
+							{!readOnly && (
+								<button
+									type="button"
+									className="absolute end-0.5 top-0.5 hidden h-4 w-4 items-center justify-center rounded text-white/70 hover:bg-white/20 hover:text-white"
+									onClick={e => {
+										e.stopPropagation()
+										handleDeleteLesson(lesson.id)
+									}}
+								>
+									×
+								</button>
+							)}
 						</div>
 					))}
 				</div>
@@ -328,6 +290,7 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 										setCollisionError(false)
 									}}
 									autoFocus
+									disabled={readOnly}
 								/>
 							</div>
 							<div>
@@ -338,11 +301,12 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 									className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
 									value={newLesson.location}
 									onChange={e => setNewLesson({ ...newLesson, location: e.target.value })}
+									disabled={readOnly}
 								/>
 							</div>
 						</div>
 						<div className="mt-6 flex gap-3">
-							{editingLessonId ? (
+							{!readOnly && editingLessonId ? (
 								<button
 									type="button"
 									className="flex-1 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
@@ -359,14 +323,16 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 									取消
 								</button>
 							)}
-							<button
-								type="button"
-								className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
-								onClick={handleAddLesson}
-								disabled={!newLesson.name}
-							>
-								{editingLessonId ? '儲存' : '確認'}
-							</button>
+							{!readOnly && (
+								<button
+									type="button"
+									className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+									onClick={handleAddLesson}
+									disabled={!newLesson.name}
+								>
+									{editingLessonId ? '儲存' : '確認'}
+								</button>
+							)}
 						</div>
 					</div>
 				</div>
