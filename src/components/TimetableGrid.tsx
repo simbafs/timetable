@@ -57,6 +57,10 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 	const [editingLessonId, setEditingLessonId] = useState<string | null>(null)
 	const [collisionError, setCollisionError] = useState(false)
 
+	useEffect(() => {
+		console.log('Timetable changed:', lessons)
+	}, [lessons])
+
 	const handleMouseDown = useCallback((day: number, period: string) => {
 		setIsDragging(true)
 		setDragStart({ day, period })
@@ -207,13 +211,27 @@ export default function TimetableGrid({ lessons: initialLessons = [], onLessonsC
 		const endIdx = PERIOD_ORDER.indexOf(lesson.endPeriod)
 		const height = (endIdx - startIdx + 1) * 41 - 1
 		const top = startIdx * 41
-		const left = lesson.day * 61 + 60
 
+		// The grid structure is: 60px (time) + gap(1px) + 7 * (1fr + gap(1px))
+		// Actually grid-cols is [60px, 1fr, 1fr, ...] with gap-px
+		// So total width W = 60 + 7*1fr + 7*1 (gaps)
+		// 1fr = (W - 67) / 7
+		//
+		// Left position for day d (0-6):
+		// L = 60 + 1 (first gap) + d * (1fr + 1)
+		//   = 61 + d * ((W - 67)/7 + 1)
+		//   = 61 + d * (W - 67 + 7)/7
+		//   = 61 + d * (W - 60)/7
+		//
+		// Width of each lesson:
+		// w = 1fr = (W - 67)/7
+		//
+		// Let's use percentages relative to container width (100%)
 		return {
 			top: `${top}px`,
 			height: `${height}px`,
-			left: `${left}px`,
-			width: '60px',
+			left: `calc(61px + (100% - 67px) / 7 * ${lesson.day})`,
+			width: `calc((100% - 67px) / 7)`,
 		}
 	}
 
