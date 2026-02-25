@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useLessonManager } from '../hooks/useLessonManager'
+import { useTimetableDrag } from '../hooks/useTimetableDrag'
 import type { Lesson } from '../types'
 import { getPeriodLabels, getPeriodOrder, type SchoolConfig } from '../utils/config'
 import { COLORS, DAY_LABELS } from '../utils/constants'
+import LessonModal from './LessonModal'
 
 interface TimetableGridProps {
 	lessons?: Lesson[]
@@ -11,7 +14,7 @@ interface TimetableGridProps {
 }
 
 export default function TimetableGrid({
-	lessons,
+	lessons: initialLessons,
 	onLessonsChange,
 	readOnly = false,
 	schoolConfig,
@@ -19,193 +22,99 @@ export default function TimetableGrid({
 	const PERIOD_ORDER = getPeriodOrder(schoolConfig)
 	const PERIOD_LABELS = getPeriodLabels(schoolConfig)
 
-	const [internalLessons, setInternalLessons] = useState<Lesson[]>([])
-	const modalRef = useRef<HTMLDialogElement>(null)
+	const { lessons, checkCollision, addLesson, updateLesson, deleteLesson, getStableColorIndex } = useLessonManager({
+		initialLessons,
+		onLessonsChange,
+		periodOrder: PERIOD_ORDER,
+	})
 
-	useEffect(() => {
-		if (lessons) {
-			setInternalLessons(lessons)
-		}
-	}, [lessons])
-
-	const currentLessons = lessons || internalLessons
-
-	const updateLessons = (newLessons: Lesson[]) => {
-		setInternalLessons(newLessons)
-		onLessonsChange?.(newLessons)
-	}
-
-	const [isDragging, setIsDragging] = useState(false)
-	const [dragStart, setDragStart] = useState<{ day: number; period: string } | null>(null)
-	const [dragEnd, setDragEnd] = useState<{ day: number; period: string } | null>(null)
+	const [isModalOpen, setIsModalOpen] = useState(false)
 	const [newLesson, setNewLesson] = useState({ name: '', location: '', color: '' })
 	const [editingLessonId, setEditingLessonId] = useState<string | null>(null)
 	const [collisionError, setCollisionError] = useState(false)
+	const [dragSelection, setDragSelection] = useState<{ day: number; start: string; end: string } | null>(null)
 
-	useEffect(() => {
-		console.log('Timetable changed:', currentLessons)
-	}, [currentLessons])
-
-	const handleMouseDown = useCallback(
-		(day: number, period: string) => {
-			if (readOnly) return
-			setIsDragging(true)
-			setDragStart({ day, period })
-			setDragEnd({ day, period })
-		},
-		[readOnly],
-	)
-
-	const handleMouseOver = useCallback(
-		(_: number, period: string) => {
-			if (!isDragging || readOnly || !dragStart) return
-			// Constrain drag to the same day as start
-			setDragEnd({ day: dragStart.day, period })
-		},
-		[isDragging, readOnly, dragStart],
-	)
-
-	const handleMouseUp = useCallback(() => {
-		if (readOnly || !isDragging || !dragStart || !dragEnd) return
-
-		if (dragStart.day === dragEnd.day) {
-			const startIdx = Math.min(PERIOD_ORDER.indexOf(dragStart.period), PERIOD_ORDER.indexOf(dragEnd.period))
-			const endIdx = Math.max(PERIOD_ORDER.indexOf(dragStart.period), PERIOD_ORDER.indexOf(dragEnd.period))
-
-			if (!checkCollision(dragStart.day, PERIOD_ORDER[startIdx], PERIOD_ORDER[endIdx])) {
+	const handleDragComplete = useCallback(
+		(day: number, startPeriod: string, endPeriod: string) => {
+			if (!checkCollision(day, startPeriod, endPeriod)) {
 				setNewLesson({
 					name: '',
 					location: '',
 					color: COLORS[Math.floor(Math.random() * COLORS.length)],
 				})
-				modalRef.current?.showModal()
+				setDragSelection({ day, start: startPeriod, end: endPeriod })
+				setEditingLessonId(null)
+				setIsModalOpen(true)
 			} else {
-				setDragStart(null)
-				setDragEnd(null)
+				// Reset drag selection if collision
+				setDragSelection(null)
 			}
-		}
+		},
+		[checkCollision],
+	)
 
-		setIsDragging(false)
-	}, [isDragging, dragStart, dragEnd])
+	const {
+		isDragging,
+		dragStart,
+		dragEnd,
+		setDragStart,
+		setDragEnd,
+		handleMouseDown,
+		handleMouseOver,
+		handleMouseUp,
+		selection,
+	} = useTimetableDrag({
+		readOnly,
+		periodOrder: PERIOD_ORDER,
+		onDragComplete: handleDragComplete,
+	})
 
-	const getStableColorIndex = (id: string) => {
-		let hash = 0
-		for (let i = 0; i < id.length; i++) {
-			hash = id.charCodeAt(i) + ((hash << 5) - hash)
-		}
-		return Math.abs(hash) % COLORS.length
+	// When modal closes, clear drag selection
+	const handleCloseModal = () => {
+		setIsModalOpen(false)
+		setNewLesson({ name: '', location: '', color: '' })
+		setDragStart(null)
+		setDragEnd(null)
+		setDragSelection(null)
+		setEditingLessonId(null)
+		setCollisionError(false)
 	}
 
-	const handleAddLesson = () => {
+	const handleAddLessonConfirm = () => {
 		if (readOnly || !newLesson.name) return
 
 		if (editingLessonId) {
-			const editingLesson = currentLessons.find(l => l.id === editingLessonId)
-			if (!editingLesson) return
-
-			if (
-				checkCollision(editingLesson.day, editingLesson.startPeriod, editingLesson.endPeriod, editingLessonId)
-			) {
+			const success = updateLesson(editingLessonId, newLesson.name, newLesson.location, newLesson.color)
+			if (!success) {
 				setCollisionError(true)
 				return
 			}
-
-			const newLessons = currentLessons.map(l =>
-				l.id === editingLessonId
-					? { ...l, name: newLesson.name, location: newLesson.location, color: newLesson.color }
-					: l,
-			)
-			updateLessons(newLessons)
 		} else {
-			if (!dragStart || !dragEnd) return
+			if (!dragSelection) return
 
-			const startIdx = Math.min(PERIOD_ORDER.indexOf(dragStart.period), PERIOD_ORDER.indexOf(dragEnd.period))
-			const endIdx = Math.max(PERIOD_ORDER.indexOf(dragStart.period), PERIOD_ORDER.indexOf(dragEnd.period))
+			const success = addLesson(
+				newLesson.name,
+				newLesson.location,
+				newLesson.color,
+				dragSelection.day,
+				dragSelection.start,
+				dragSelection.end,
+			)
 
-			if (checkCollision(dragStart.day, PERIOD_ORDER[startIdx], PERIOD_ORDER[endIdx])) {
+			if (!success) {
 				setCollisionError(true)
 				return
 			}
-
-			const lesson: Lesson = {
-				id: crypto.randomUUID(),
-				name: newLesson.name,
-				location: newLesson.location,
-				day: dragStart.day,
-				startPeriod: PERIOD_ORDER[startIdx],
-				endPeriod: PERIOD_ORDER[endIdx],
-				color: newLesson.color || COLORS[Math.floor(Math.random() * COLORS.length)],
-			}
-
-			const newLessons = [...currentLessons, lesson]
-			updateLessons(newLessons)
 		}
 
-		modalRef.current?.close()
-		setNewLesson({ name: '', location: '', color: '' })
-		setDragStart(null)
-		setDragEnd(null)
-		setEditingLessonId(null)
-		setCollisionError(false)
-	}
-
-	const handleCloseModal = () => {
-		modalRef.current?.close()
-		setNewLesson({ name: '', location: '', color: '' })
-		setDragStart(null)
-		setDragEnd(null)
-		setEditingLessonId(null)
-		setCollisionError(false)
-	}
-
-	const handleDeleteLesson = (id: string) => {
-		if (readOnly) return
-		const newLessons = currentLessons.filter(l => l.id !== id)
-		updateLessons(newLessons)
 		handleCloseModal()
 	}
 
-	const getSelection = () => {
-		if (!dragStart || !dragEnd) return new Set<string>()
-
-		const startDay = Math.min(dragStart.day, dragEnd.day)
-		const endDay = Math.max(dragStart.day, dragEnd.day)
-		const startIdx = Math.min(PERIOD_ORDER.indexOf(dragStart.period), PERIOD_ORDER.indexOf(dragEnd.period))
-		const endIdx = Math.max(PERIOD_ORDER.indexOf(dragStart.period), PERIOD_ORDER.indexOf(dragEnd.period))
-
-		const selected = new Set<string>()
-		for (let day = startDay; day <= endDay; day++) {
-			for (let i = startIdx; i <= endIdx; i++) {
-				selected.add(`${day}-${PERIOD_ORDER[i]}`)
-			}
-		}
-		return selected
+	const handleDeleteLessonConfirm = (id: string) => {
+		if (readOnly) return
+		deleteLesson(id)
+		handleCloseModal()
 	}
-
-	const checkCollision = (day: number, startPeriod: string, endPeriod: string, excludeId?: string) => {
-		const startIdx = PERIOD_ORDER.indexOf(startPeriod)
-		const endIdx = PERIOD_ORDER.indexOf(endPeriod)
-
-		return currentLessons.some(l => {
-			if (excludeId && l.id === excludeId) return false
-			if (l.day !== day) return false
-			const lStartIdx = PERIOD_ORDER.indexOf(l.startPeriod)
-			const lEndIdx = PERIOD_ORDER.indexOf(l.endPeriod)
-			return startIdx <= lEndIdx && endIdx >= lStartIdx
-		})
-	}
-
-	const selection = getSelection()
-
-	useEffect(() => {
-		const handleGlobalMouseUp = () => {
-			if (isDragging) {
-				setIsDragging(false)
-			}
-		}
-		window.addEventListener('mouseup', handleGlobalMouseUp)
-		return () => window.removeEventListener('mouseup', handleGlobalMouseUp)
-	}, [isDragging])
 
 	const getLessonStyle = (lesson: Lesson) => {
 		const startIdx = PERIOD_ORDER.indexOf(lesson.startPeriod)
@@ -228,6 +137,14 @@ export default function TimetableGrid({
 			width: `calc((100% - 92px) / 7)`,
 		}
 	}
+
+	useEffect(() => {
+		// Clear drag selection if modal is closed externally (shouldn't happen but good for safety)
+		if (!isModalOpen) {
+			setDragStart(null)
+			setDragEnd(null)
+		}
+	}, [isModalOpen, setDragStart, setDragEnd])
 
 	return (
 		<div className="overflow-x-auto">
@@ -267,7 +184,7 @@ export default function TimetableGrid({
 						</div>
 					))}
 
-					{currentLessons.map(lesson => {
+					{lessons.map(lesson => {
 						const isCustomColor = lesson.color && !lesson.color.startsWith('bg-')
 						const lessonColorClass = !isCustomColor
 							? lesson.color || COLORS[getStableColorIndex(lesson.id)]
@@ -290,7 +207,8 @@ export default function TimetableGrid({
 										location: lesson.location,
 										color: lesson.color || COLORS[getStableColorIndex(lesson.id)],
 									})
-									modalRef.current?.showModal()
+									setCollisionError(false)
+									setIsModalOpen(true)
 								}}
 							>
 								<span className="text-3xl">{lesson.name}</span>
@@ -301,7 +219,7 @@ export default function TimetableGrid({
 										className="absolute end-0.5 top-0.5 hidden h-4 w-4 items-center justify-center rounded text-white/70 hover:bg-white/20 hover:text-white"
 										onClick={e => {
 											e.stopPropagation()
-											handleDeleteLesson(lesson.id)
+											handleDeleteLessonConfirm(lesson.id)
 										}}
 									>
 										×
@@ -313,103 +231,18 @@ export default function TimetableGrid({
 				</div>
 			</div>
 
-			<dialog
-				ref={modalRef}
-				className="m-auto backdrop:bg-black/50 p-0 bg-transparent rounded-2xl"
-				onClick={e => {
-					if (e.target === modalRef.current) handleCloseModal()
-				}}
+			<LessonModal
+				isOpen={isModalOpen}
 				onClose={handleCloseModal}
-			>
-				<div className="w-80 rounded-2xl bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-					<h3 className="mb-4 text-lg font-semibold text-zinc-800">
-						{editingLessonId ? '編輯課程' : '新增課程'}
-					</h3>
-					<div className="space-y-4">
-						{collisionError && (
-							<div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-								該時段已有課程，無法重疊
-							</div>
-						)}
-						<div>
-							<label className="mb-1.5 block text-sm font-medium text-zinc-600">課程名稱</label>
-							<input
-								type="text"
-								placeholder="例如：微積分"
-								className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-								value={newLesson.name}
-								onChange={e => {
-									setNewLesson({ ...newLesson, name: e.target.value })
-									setCollisionError(false)
-								}}
-								autoFocus
-								disabled={readOnly}
-							/>
-						</div>
-						<div>
-							<label className="mb-1.5 block text-sm font-medium text-zinc-600">地點（可選）</label>
-							<input
-								type="text"
-								placeholder="例如：綜院 201"
-								className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-								value={newLesson.location}
-								onChange={e => setNewLesson({ ...newLesson, location: e.target.value })}
-								disabled={readOnly}
-							/>
-						</div>
-						<div>
-							<label className="mb-1.5 block text-sm font-medium text-zinc-600">顏色</label>
-							<div className="flex flex-wrap gap-2 items-center">
-								{COLORS.map(colorClass => {
-									// Extract color name from class (e.g., 'bg-blue-500' -> 'bg-blue-500')
-									// Tailwind colors need to be fully applied to work
-									return (
-										<button
-											key={colorClass}
-											type="button"
-											className={`h-8 w-8 rounded-full border-2 transition-all ${colorClass} ${
-												newLesson.color === colorClass
-													? 'border-zinc-600 scale-110'
-													: 'border-transparent hover:scale-105'
-											}`}
-											onClick={() => setNewLesson({ ...newLesson, color: colorClass })}
-										/>
-									)
-								})}
-							</div>
-						</div>
-					</div>
-					<div className="mt-6 flex gap-3">
-						{!readOnly && editingLessonId ? (
-							<button
-								type="button"
-								className="flex-1 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
-								onClick={() => handleDeleteLesson(editingLessonId)}
-							>
-								刪除
-							</button>
-						) : (
-							<button
-								type="button"
-								className="flex-1 rounded-xl border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50"
-								onClick={handleCloseModal}
-							>
-								取消
-							</button>
-						)}
-						{!readOnly && (
-							<button
-								type="button"
-								className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
-								onClick={handleAddLesson}
-								disabled={!newLesson.name}
-							>
-								{editingLessonId ? '儲存' : '確認'}
-							</button>
-						)}
-					</div>
-				</div>
-			</dialog>
+				readOnly={readOnly}
+				editingLessonId={editingLessonId}
+				newLesson={newLesson}
+				onNewLessonChange={setNewLesson}
+				collisionError={collisionError}
+				setCollisionError={setCollisionError}
+				onDelete={handleDeleteLessonConfirm}
+				onConfirm={handleAddLessonConfirm}
+			/>
 		</div>
 	)
 }
