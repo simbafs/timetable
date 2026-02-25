@@ -211,7 +211,7 @@ export default function TimetableGrid({
 									setIsModalOpen(true)
 								}}
 							>
-								<span className="text-3xl">{lesson.name}</span>
+								<span className="text-xl text-center text-balance">{lesson.name}</span>
 								{lesson.location && <span className="text-white/70 text-xl">{lesson.location}</span>}
 								{!readOnly && (
 									<button
