@@ -5,4 +5,5 @@ export interface Lesson {
 	day: number
 	startPeriod: string
 	endPeriod: string
+	color?: string
 }

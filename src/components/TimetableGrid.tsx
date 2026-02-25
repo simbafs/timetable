@@ -28,7 +28,7 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 	const [isDragging, setIsDragging] = useState(false)
 	const [dragStart, setDragStart] = useState<{ day: number; period: string } | null>(null)
 	const [dragEnd, setDragEnd] = useState<{ day: number; period: string } | null>(null)
-	const [newLesson, setNewLesson] = useState({ name: '', location: '' })
+	const [newLesson, setNewLesson] = useState({ name: '', location: '', color: '' })
 	const [editingLessonId, setEditingLessonId] = useState<string | null>(null)
 	const [collisionError, setCollisionError] = useState(false)
 
@@ -63,6 +63,11 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 			const endIdx = Math.max(PERIOD_ORDER.indexOf(dragStart.period), PERIOD_ORDER.indexOf(dragEnd.period))
 
 			if (!checkCollision(dragStart.day, PERIOD_ORDER[startIdx], PERIOD_ORDER[endIdx])) {
+				setNewLesson({
+					name: '',
+					location: '',
+					color: COLORS[Math.floor(Math.random() * COLORS.length)],
+				})
 				modalRef.current?.showModal()
 			} else {
 				setDragStart(null)
@@ -72,6 +77,14 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 
 		setIsDragging(false)
 	}, [isDragging, dragStart, dragEnd])
+
+	const getStableColorIndex = (id: string) => {
+		let hash = 0
+		for (let i = 0; i < id.length; i++) {
+			hash = id.charCodeAt(i) + ((hash << 5) - hash)
+		}
+		return Math.abs(hash) % COLORS.length
+	}
 
 	const handleAddLesson = () => {
 		if (readOnly || !newLesson.name) return
@@ -88,7 +101,9 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 			}
 
 			const newLessons = currentLessons.map(l =>
-				l.id === editingLessonId ? { ...l, name: newLesson.name, location: newLesson.location } : l,
+				l.id === editingLessonId
+					? { ...l, name: newLesson.name, location: newLesson.location, color: newLesson.color }
+					: l,
 			)
 			updateLessons(newLessons)
 		} else {
@@ -109,6 +124,7 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 				day: dragStart.day,
 				startPeriod: PERIOD_ORDER[startIdx],
 				endPeriod: PERIOD_ORDER[endIdx],
+				color: newLesson.color || COLORS[Math.floor(Math.random() * COLORS.length)],
 			}
 
 			const newLessons = [...currentLessons, lesson]
@@ -116,7 +132,7 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 		}
 
 		modalRef.current?.close()
-		setNewLesson({ name: '', location: '' })
+		setNewLesson({ name: '', location: '', color: '' })
 		setDragStart(null)
 		setDragEnd(null)
 		setEditingLessonId(null)
@@ -125,7 +141,7 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 
 	const handleCloseModal = () => {
 		modalRef.current?.close()
-		setNewLesson({ name: '', location: '' })
+		setNewLesson({ name: '', location: '', color: '' })
 		setDragStart(null)
 		setDragEnd(null)
 		setEditingLessonId(null)
@@ -232,35 +248,49 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 						</div>
 					))}
 
-					{currentLessons.map((lesson, idx) => (
-						<div
-							key={lesson.id}
-							className={`absolute z-10 flex flex-col items-center justify-center overflow-hidden rounded px-1 py-0.5 font-bold text-white shadow-sm ${COLORS[idx % COLORS.length]}`}
-							style={getLessonStyle(lesson)}
-							onClick={e => {
-								if (readOnly) return
-								e.stopPropagation()
-								setEditingLessonId(lesson.id)
-								setNewLesson({ name: lesson.name, location: lesson.location })
-								modalRef.current?.showModal()
-							}}
-						>
-							<span className="text-3xl">{lesson.name}</span>
-							{lesson.location && <span className="text-white/70 text-xl">{lesson.location}</span>}
-							{!readOnly && (
-								<button
-									type="button"
-									className="absolute end-0.5 top-0.5 hidden h-4 w-4 items-center justify-center rounded text-white/70 hover:bg-white/20 hover:text-white"
-									onClick={e => {
-										e.stopPropagation()
-										handleDeleteLesson(lesson.id)
-									}}
-								>
-									×
-								</button>
-							)}
-						</div>
-					))}
+					{currentLessons.map((lesson, idx) => {
+						const isCustomColor = lesson.color && !lesson.color.startsWith('bg-')
+						const lessonColorClass = !isCustomColor
+							? lesson.color || COLORS[getStableColorIndex(lesson.id)]
+							: ''
+
+						return (
+							<div
+								key={lesson.id}
+								className={`absolute z-10 flex flex-col items-center justify-center overflow-hidden rounded px-1 py-0.5 font-bold text-white shadow-sm ${lessonColorClass}`}
+								style={{
+									...getLessonStyle(lesson),
+									backgroundColor: isCustomColor ? lesson.color : undefined,
+								}}
+								onClick={e => {
+									if (readOnly) return
+									e.stopPropagation()
+									setEditingLessonId(lesson.id)
+									setNewLesson({
+										name: lesson.name,
+										location: lesson.location,
+										color: lesson.color || COLORS[getStableColorIndex(lesson.id)],
+									})
+									modalRef.current?.showModal()
+								}}
+							>
+								<span className="text-3xl">{lesson.name}</span>
+								{lesson.location && <span className="text-white/70 text-xl">{lesson.location}</span>}
+								{!readOnly && (
+									<button
+										type="button"
+										className="absolute end-0.5 top-0.5 hidden h-4 w-4 items-center justify-center rounded text-white/70 hover:bg-white/20 hover:text-white"
+										onClick={e => {
+											e.stopPropagation()
+											handleDeleteLesson(lesson.id)
+										}}
+									>
+										×
+									</button>
+								)}
+							</div>
+						)
+					})}
 				</div>
 			</div>
 
@@ -307,6 +337,27 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 								onChange={e => setNewLesson({ ...newLesson, location: e.target.value })}
 								disabled={readOnly}
 							/>
+						</div>
+						<div>
+							<label className="mb-1.5 block text-sm font-medium text-zinc-600">顏色</label>
+							<div className="flex flex-wrap gap-2 items-center">
+								{COLORS.map(colorClass => {
+									// Extract color name from class (e.g., 'bg-blue-500' -> 'bg-blue-500')
+									// Tailwind colors need to be fully applied to work
+									return (
+										<button
+											key={colorClass}
+											type="button"
+											className={`h-8 w-8 rounded-full border-2 transition-all ${colorClass} ${
+												newLesson.color === colorClass
+													? 'border-zinc-600 scale-110'
+													: 'border-transparent hover:scale-105'
+											}`}
+											onClick={() => setNewLesson({ ...newLesson, color: colorClass })}
+										/>
+									)
+								})}
+							</div>
 						</div>
 					</div>
 					<div className="mt-6 flex gap-3">
