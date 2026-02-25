@@ -266,7 +266,7 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 
 			<dialog
 				ref={modalRef}
-				className="backdrop:bg-black/50 p-0 bg-transparent rounded-2xl"
+				className="m-auto backdrop:bg-black/50 p-0 bg-transparent rounded-2xl"
 				onClick={e => {
 					if (e.target === modalRef.current) handleCloseModal()
 				}}
