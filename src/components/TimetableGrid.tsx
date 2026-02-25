@@ -47,7 +47,7 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 	)
 
 	const handleMouseOver = useCallback(
-		(day: number, period: string) => {
+		(_: number, period: string) => {
 			if (!isDragging || readOnly || !dragStart) return
 			// Constrain drag to the same day as start
 			setDragEnd({ day: dragStart.day, period })
@@ -248,7 +248,7 @@ export default function TimetableGrid({ lessons, onLessonsChange, readOnly = fal
 						</div>
 					))}
 
-					{currentLessons.map((lesson, idx) => {
+					{currentLessons.map(lesson => {
 						const isCustomColor = lesson.color && !lesson.color.startsWith('bg-')
 						const lessonColorClass = !isCustomColor
 							? lesson.color || COLORS[getStableColorIndex(lesson.id)]

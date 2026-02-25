@@ -129,7 +129,20 @@ export const POST: APIRoute = async ({ request }) => {
 				const [name, location, dow, start, end] = item
 				// Ensure dow is parsed as integer if it comes as string
 				const dayOfWeek = typeof dow === 'string' ? parseInt(dow, 10) : dow
-				await addLessonEvent(oauth2Client, calendarId, semester, name, location, dayOfWeek, start, end)
+				// Ensure start and end are strings
+				const startPeriod = String(start)
+				const endPeriod = String(end)
+
+				await addLessonEvent(
+					oauth2Client,
+					calendarId,
+					semester,
+					name,
+					location,
+					dayOfWeek,
+					startPeriod,
+					endPeriod,
+				)
 			}
 
 			await createWeekNumbers(oauth2Client, calendarId, semester.start)
