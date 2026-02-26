@@ -3,7 +3,7 @@ import { OAuth2Client } from 'google-auth-library'
 
 export const prerender = false
 
-export const GET: APIRoute = async ({ request, redirect }) => {
+export const GET: APIRoute = async ({ request, redirect, locals }) => {
 	const url = new URL(request.url)
 	if (url.hostname === 'timetable.simbafs.cc') {
 		url.protocol = 'https:'
@@ -11,8 +11,18 @@ export const GET: APIRoute = async ({ request, redirect }) => {
 	const origin = url.origin
 	const redirect_uri = `${origin}/api/auth/callback`
 
-	const clientId = import.meta.env.PUBLIC_GOOGLE_CLIENT_ID || process.env.PUBLIC_GOOGLE_CLIENT_ID
-	const clientSecret = import.meta.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET
+	// Get env vars from import.meta.env (build-time) or locals.runtime.env (Cloudflare runtime)
+	const runtime = (locals as any)?.runtime
+	const env = (runtime?.env as any) || {}
+
+	const clientId =
+		import.meta.env.PUBLIC_GOOGLE_CLIENT_ID ||
+		env.PUBLIC_GOOGLE_CLIENT_ID ||
+		(typeof process !== 'undefined' ? process.env.PUBLIC_GOOGLE_CLIENT_ID : undefined)
+	const clientSecret =
+		import.meta.env.GOOGLE_CLIENT_SECRET ||
+		env.GOOGLE_CLIENT_SECRET ||
+		(typeof process !== 'undefined' ? process.env.GOOGLE_CLIENT_SECRET : undefined)
 
 	if (!clientId || !clientSecret) {
 		console.error('Missing env vars:', { clientId: !!clientId, clientSecret: !!clientSecret })
@@ -34,6 +44,8 @@ export const GET: APIRoute = async ({ request, redirect }) => {
 		include_granted_scopes: true,
 		redirect_uri,
 	})
+
+	console.log('Redirecting to auth URL:', authUrl)
 
 	return redirect(authUrl)
 }

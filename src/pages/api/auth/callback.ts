@@ -3,7 +3,7 @@ import { OAuth2Client } from 'google-auth-library'
 
 export const prerender = false
 
-export const GET: APIRoute = async ({ request, redirect }) => {
+export const GET: APIRoute = async ({ request, redirect, locals }) => {
 	const url = new URL(request.url)
 	const code = url.searchParams.get('code')
 
@@ -18,8 +18,18 @@ export const GET: APIRoute = async ({ request, redirect }) => {
 	// Construct the same redirect_uri used in the initial request
 	const redirect_uri = `${origin}/api/auth/callback`
 
-	const clientId = import.meta.env.PUBLIC_GOOGLE_CLIENT_ID || process.env.PUBLIC_GOOGLE_CLIENT_ID
-	const clientSecret = import.meta.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET
+	// Get env vars from import.meta.env (build-time) or locals.runtime.env (Cloudflare runtime)
+	const runtime = (locals as any)?.runtime
+	const env = (runtime?.env as any) || {}
+
+	const clientId =
+		import.meta.env.PUBLIC_GOOGLE_CLIENT_ID ||
+		env.PUBLIC_GOOGLE_CLIENT_ID ||
+		(typeof process !== 'undefined' ? process.env.PUBLIC_GOOGLE_CLIENT_ID : undefined)
+	const clientSecret =
+		import.meta.env.GOOGLE_CLIENT_SECRET ||
+		env.GOOGLE_CLIENT_SECRET ||
+		(typeof process !== 'undefined' ? process.env.GOOGLE_CLIENT_SECRET : undefined)
 
 	if (!clientId || !clientSecret) {
 		console.error('Missing env vars:', { clientId: !!clientId, clientSecret: !!clientSecret })
@@ -41,7 +51,9 @@ export const GET: APIRoute = async ({ request, redirect }) => {
 		if (tokens.access_token) params.set('access_token', tokens.access_token)
 		if (tokens.id_token) params.set('id_token', tokens.id_token)
 
-		return redirect(`${origin}/#${params.toString()}`)
+		const redirectUrl = `${origin}/#${params.toString()}`
+		console.log('Login successful, redirecting to:', redirectUrl)
+		return redirect(redirectUrl)
 	} catch (error) {
 		console.error('Error exchanging code for token:', error)
 		return new Response('Authentication failed', { status: 500 })
