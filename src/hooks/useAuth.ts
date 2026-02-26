@@ -10,6 +10,8 @@ export function useAuth() {
 	const [accessToken, setAccessToken] = useState<string | null>(null)
 	const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
 
+	const [justLoggedIn, setJustLoggedIn] = useState(false)
+
 	useEffect(() => {
 		const storedToken = localStorage.getItem('google_access_token')
 		const storedIdToken = localStorage.getItem('google_id_token')
@@ -38,6 +40,7 @@ export function useAuth() {
 			}
 
 			if (token || idToken) {
+				setJustLoggedIn(true)
 				window.location.hash = ''
 				// Optional: clear URL without reload
 				window.history.replaceState(null, '', window.location.pathname)
@@ -85,6 +88,7 @@ export function useAuth() {
 	return {
 		accessToken,
 		userInfo,
+		justLoggedIn,
 		handleLogin,
 		handleLogout,
 	}

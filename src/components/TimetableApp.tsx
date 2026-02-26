@@ -10,12 +10,18 @@ import TimetableGrid from './TimetableGrid'
 const DISABLE_AUTH = import.meta.env.PUBLIC_DISABLE_AUTH === 'true'
 
 export default function TimetableApp() {
-	const { accessToken, userInfo, handleLogin, handleLogout } = useAuth()
+	const { accessToken, userInfo, justLoggedIn, handleLogin, handleLogout } = useAuth()
 	const { lessons, setLessons } = useTimetableData()
 
 	const [loading, setLoading] = useState(false)
 	const [isEditing, setIsEditing] = useState(false)
 	const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+
+	useEffect(() => {
+		if (justLoggedIn) {
+			setIsExportModalOpen(true)
+		}
+	}, [justLoggedIn])
 
 	const [selectedSchoolId, setSelectedSchoolId] = useState(() => {
 		if (typeof localStorage !== 'undefined') {
