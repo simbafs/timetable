@@ -5,6 +5,9 @@ export const prerender = false
 
 export const GET: APIRoute = async ({ request, redirect }) => {
 	const url = new URL(request.url)
+	if (url.hostname === 'timetable.simbafs.cc') {
+		url.protocol = 'https:'
+	}
 	const origin = url.origin
 	const redirect_uri = `${origin}/api/auth/callback`
 

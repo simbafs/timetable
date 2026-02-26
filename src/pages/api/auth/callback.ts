@@ -11,6 +11,9 @@ export const GET: APIRoute = async ({ request, redirect }) => {
 		return new Response('Missing code', { status: 400 })
 	}
 
+	if (url.hostname === 'timetable.simbafs.cc') {
+		url.protocol = 'https:'
+	}
 	const origin = url.origin
 	// Construct the same redirect_uri used in the initial request
 	const redirect_uri = `${origin}/api/auth/callback`
