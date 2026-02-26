@@ -28,7 +28,12 @@ export default function TimetableApp() {
 
 	const [semesterStart, setSemesterStart] = useState(schoolConfig.dates.start)
 	const [semesterEnd, setSemesterEnd] = useState(schoolConfig.dates.end)
-	const [calendarName, setCalendarName] = useState('課表')
+	const [calendarName, setCalendarName] = useState(() => {
+		if (typeof localStorage !== 'undefined') {
+			return localStorage.getItem('calendar_name') || '課表'
+		}
+		return '課表'
+	})
 	const [includeWeekNumbers, setIncludeWeekNumbers] = useState(true)
 
 	useEffect(() => {
@@ -37,6 +42,10 @@ export default function TimetableApp() {
 		setSemesterStart(schoolConfig.dates.start)
 		setSemesterEnd(schoolConfig.dates.end)
 	}, [selectedSchoolId])
+
+	useEffect(() => {
+		localStorage.setItem('calendar_name', calendarName)
+	}, [calendarName])
 
 	const handleExport = async (e: React.SyntheticEvent) => {
 		e.preventDefault()
