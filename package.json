@@ -30,5 +30,12 @@
 	},
 	"devDependencies": {
 		"@rollup/plugin-yaml": "^4.1.2"
+	},
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"@tailwindcss/oxide",
+			"esbuild",
+			"sharp"
+		]
 	}
 }
