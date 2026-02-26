@@ -1,48 +1,86 @@
-# Astro Starter Kit: Minimal
+# University Timetable Scheduler
 
-```sh
-pnpm create astro@latest -- --template minimal
+A modern, interactive timetable scheduler built with Astro, React, and Tailwind CSS. Design your semester schedule with ease and sync it directly to Google Calendar.
+
+## 🌟 Features
+
+- **Interactive Grid**: Drag-and-drop interface to create and edit lessons intuitively.
+- **Multi-University Support**: Pre-configured class periods for NCKU (National Cheng Kung University) and NYCU (National Yang Ming Chiao Tung University).
+- **Google Calendar Sync**: One-click export to Google Calendar to keep your schedule organized.
+- **ICS Export**: Download `.ics` files for compatibility with other calendar apps (Apple Calendar, Outlook).
+- **Responsive Design**: Built with Tailwind CSS and DaisyUI for a clean, modern look on any device.
+- **Dark/Light Mode**: (Coming soon/Supported by DaisyUI themes).
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js v25+
+- pnpm (preferred)
+
+### Installation
+
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/yourusername/timetable.git
+    cd timetable
+    ```
+2.  Install dependencies:
+    ```bash
+    pnpm install
+    ```
+
+### Configuration
+
+To enable Google Calendar integration locally, you need to set up OAuth credentials.
+
+1.  Create a project in the [Google Cloud Console](https://console.cloud.google.com/).
+2.  Enable the **Google Calendar API**.
+3.  Create OAuth 2.0 credentials (Client ID and Secret).
+4.  Set the authorized redirect URI to `http://localhost:4321/api/auth/callback`.
+5.  Create a `.dev.vars` file in the root directory:
+
+    ```env
+    GOOGLE_CLIENT_ID=your-client-id
+    GOOGLE_CLIENT_SECRET=your-client-secret
+    GOOGLE_REDIRECT_URI=http://localhost:4321/api/auth/callback
+    ```
+
+### Running Locally
+
+Start the development server:
+
+```bash
+pnpm dev
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+Visit `http://localhost:4321` to see the app.
 
-## 🚀 Project Structure
+## 🛠 Tech Stack
 
-Inside of your Astro project, you'll see the following folders and files:
+- **Frontend**: [Astro](https://astro.build/) + [React](https://react.dev/)
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) + [DaisyUI](https://daisyui.com/)
+- **Deployment**: Cloudflare Workers (SSR)
+- **Authentication**: Google OAuth 2.0
 
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+## 📦 Build & Deploy
+
+To build for production (Cloudflare Workers):
+
+```bash
+pnpm build
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+To preview the production build locally:
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+```bash
+pnpm preview
+```
 
-Any static assets, like images, can be placed in the `public/` directory.
+## 🤖 About
 
-## 🧞 Commands
+This project is a modern rewrite of my legacy Google Apps Script application. It was primarily architecturalized and implemented by **opencode**, an AI-powered coding agent, migrating the original logic to a robust Astro/React stack.
 
-All commands are run from the root of the project, from a terminal:
+## 📝 License
 
-| Command                | Action                                           |
-| :--------------------- | :----------------------------------------------- |
-| `pnpm install`         | Installs dependencies                            |
-| `pnpm dev`             | Starts local dev server at `localhost:4321`      |
-| `pnpm build`           | Build your production site to `./dist/`          |
-| `pnpm preview`         | Preview your build locally, before deploying     |
-| `pnpm astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `pnpm astro -- --help` | Get help using the Astro CLI                     |
-| `pnpm format`          | format code with prettier                        |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
-
-## GitHub Action
-
-This repository has built in GitHub Action to Deploy the website to GitHub Page every time you push commits to GitHub.
+MIT

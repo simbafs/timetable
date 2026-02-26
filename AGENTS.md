@@ -4,18 +4,20 @@ This file provides guidelines for agentic coding agents working in this reposito
 
 ## GOD RULES
 
-no matter in any cases, you must follow those rules:
+No matter what, you must follow these rules:
 
-1. say "meow" everytime you do anything
-2. never modify git (commands like add, commit, reset etc.) without my clear instruction
+1.  Say "meow" every time you do anything.
+2.  **NEVER** modify git (commands like add, commit, reset, etc.) without clear instruction.
+3.  Always GPG sign commits when committing. Retry if signing fails.
 
 ## Project Overview
 
-This is an Astro-based timetable application with React frontend, deployed to Cloudflare Workers. It integrates with Google Calendar API for syncing schedules.
+This is an Astro-based timetable application with a React frontend, deployed to Cloudflare Workers.
+It integrates with Google Calendar API for syncing schedules.
 
-## Commands
+## Development Commands
 
-### Development
+### Build & Run
 
 ```bash
 pnpm run dev          # Start development server
@@ -23,75 +25,66 @@ pnpm run build        # Build for production (Cloudflare)
 pnpm run preview      # Preview production build locally
 ```
 
-### Code Formatting
+### Quality Checks
 
 ```bash
 pnpm run format       # Format all files with Prettier
+pnpm run type-check   # Run Astro check and TypeScript validation
 ```
 
-### Running Tests
+### Testing
 
-This project does not currently have a test framework configured. If adding tests:
-
-```bash
-# Vitest (recommended for Astro/React)
-pnpm vitest           # Run all tests
-pnpm vitest run       # Run tests once
-pnpm vitest run -- [file]   # Run single test file
-```
+This project currently has **no test framework** configured.
+If explicitly asked to add tests, use **Vitest**.
 
 ## Code Style Guidelines
 
 ### General
 
-- **Language**: English for code, Traditional Chinese (臺灣用語) for user-facing text
-- **No comments**: Do not add comments unless explicitly requested
-- **Concise responses**: Answer directly without unnecessary preamble or explanation
+- **Language**: English for code, Traditional Chinese (臺灣用語) for user-facing text.
+- **Comments**: Do not add comments unless explicitly requested.
+- **Conciseness**: Answer directly without unnecessary preamble.
 
-### Astro/React (Frontend)
+### Frontend (Astro & React)
 
 #### File Organization
 
 ```
 src/
-├── components/       # React components
-├── pages/           # Astro pages
+├── components/       # React components (PascalCase)
+├── pages/           # Astro pages (file-based routing)
 ├── layouts/         # Astro layouts
-├── hooks/           # Custom React hooks
+├── hooks/           # Custom React hooks (camelCase, use*)
 ├── utils/           # Utility functions
-└── styles/          # CSS/global styles
+└── styles/          # Global CSS
 ```
-
-#### Naming Conventions
-
-- Components: PascalCase (e.g., `TimetableGrid.tsx`)
-- Hooks: camelCase with `use` prefix (e.g., `useTimetable.ts`)
-- Utils: PascalCase (e.g., `DateUtils.ts`)
-- CSS files: kebab-case (e.g., `global.css`)
 
 #### TypeScript
 
-- Use explicit types for props and function parameters
-- Prefer interfaces over types for object shapes
-- Use `Record<K, V>` for dictionary types
+- Strict mode is enabled (`astro/tsconfigs/strict`).
+- Use explicit types for props and function parameters.
+- Prefer `interface` over `type` for object definitions.
+- Use `Record<K, V>` for dictionary types.
+- Avoid `any` types; use `unknown` if necessary.
 
 #### React Patterns
 
-- Use functional components with hooks
-- Use `useCallback` for event handlers passed to child components
-- Use `useEffect` for side effects
-- Avoid inline object definitions in JSX props
+- Use **functional components** with hooks.
+- Use `useCallback` for event handlers passed to children.
+- Use `useEffect` for side effects.
+- Avoid inline object definitions in JSX props (causes re-renders).
 
-#### Tailwind CSS (v4)
+#### Styling (Tailwind CSS v4 + DaisyUI)
 
-- Use `@import 'tailwindcss';` in global CSS
-- Do NOT use `tailwind.config.js` (v4 no longer requires it)
-- Do NOT use PostCSS or Autoprefixer
-- Use Tailwind's utility classes for all styling
+- Use `@import 'tailwindcss';` in global CSS.
+- Use **Tailwind utility classes** for all styling.
+- **DaisyUI** components are available (see `src/styles/global.css`).
+- Do NOT use `tailwind.config.js` (v4 usage).
+- Do NOT use PostCSS or Autoprefixer configuration files.
 
 #### Prettier Configuration
 
-The project uses these Prettier settings (defined in `.prettierrc`):
+Adhere to `.prettierrc`:
 
 ```json
 {
@@ -100,72 +93,48 @@ The project uses these Prettier settings (defined in `.prettierrc`):
 	"useTabs": true,
 	"semi": false,
 	"singleQuote": true,
-	"arrowParens": "avoid"
+	"arrowParens": "avoid",
+	"plugins": ["prettier-plugin-tailwindcss", "prettier-plugin-astro", "prettier-plugin-organize-imports"]
 }
 ```
 
-Always run `pnpm run format` after making changes.
+### Backend (Golang - if applicable)
 
-### Golang (Backend - if applicable)
+If adding Go code (e.g., separate backend service):
 
-If adding Go code:
-
-- **Placement**: Place files in project root (no `pkg/`, `internal/`, `cmd/` unless explicitly required)
-- **Dependencies**:
-    - Use `github.com/samber/do/v2` for dependency injection
-    - Use `github.com/samber/oops` for error handling
-    - Use `gin` for HTTP framework
-    - Use `sqlc` + `sqlite` for database
-- **Architecture**: Use monolithic structure (not clean architecture unless explicitly requested)
-- **Loops**: Use `for i := range n` or `for range n` instead of `for i := 0; i < n; i++`
+- **Placement**: Root directory (no `pkg/`, `internal/`).
+- **Stack**: `gin` (HTTP), `sqlc` + `sqlite` (DB), `github.com/samber/do/v2` (DI).
+- **Style**: Monolithic architecture. Use `for i := range n` syntax.
 
 ### Docker Compose
 
-- Use `docker compose` (not `docker-compose`)
-- Use `compose.yaml` (not `docker-compose.yml`)
-- No `version:` field in compose file
-
-### Git Conventions
-
-- Never commit without explicit user instruction
-- Always GPG sign commits when committing
-- Retry signing if it fails
+- Use `docker compose` (not `docker-compose`).
+- Use `compose.yaml`.
+- No `version:` field.
 
 ## Environment Variables
 
-Create a `.dev.vars` file for local development:
+Local development requires `.dev.vars`:
 
-```
+```env
 GOOGLE_CLIENT_ID=your-client-id
 GOOGLE_CLIENT_SECRET=your-client-secret
 GOOGLE_REDIRECT_URI=http://localhost:4321/api/auth/callback
 ```
 
-## Key Files
+## Key Files & Structure
 
 | File                               | Purpose                         |
 | ---------------------------------- | ------------------------------- |
-| `src/pages/index.astro`            | Main timetable page             |
-| `src/components/TimetableGrid.tsx` | React drag-and-drop timetable   |
-| `src/pages/api/calendar.ts`        | Google Calendar API integration |
-| `src/pages/api/auth/*.ts`          | OAuth authentication            |
-| `astro.config.mjs`                 | Astro configuration             |
-
-## Debugging
-
-```bash
-# View Cloudflare logs
-pnpm run preview
-# Then check browser console for React errors
-
-# Check build output
-pnpm run build
-```
+| `src/pages/index.astro`            | Main application entry point    |
+| `src/components/TimetableGrid.tsx` | Core drag-and-drop timetable UI |
+| `src/pages/api/calendar.ts`        | Google Calendar API endpoints   |
+| `src/hooks/useTimetableDrag.ts`    | Drag-and-drop logic hook        |
+| `astro.config.mjs`                 | Astro & Cloudflare config       |
 
 ## Dependencies
 
-- **Framework**: Astro 5.x with React integration
-- **Styling**: Tailwind CSS v4
-- **Deployment**: Cloudflare Workers
-- **Auth**: Google OAuth 2.0
-- **Calendar**: Google Calendar API
+- **Runtime**: Node.js v25+ (via pnpm)
+- **Framework**: Astro 5.x + React 19
+- **Styling**: Tailwind CSS v4 + DaisyUI 5
+- **Deployment**: Cloudflare Workers (SSR)

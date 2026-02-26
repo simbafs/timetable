@@ -14,6 +14,8 @@ export default function TimetableApp() {
 	const { lessons, setLessons } = useTimetableData()
 
 	const [loading, setLoading] = useState(false)
+	const [progress, setProgress] = useState(0)
+	const [statusText, setStatusText] = useState('')
 	const [isEditing, setIsEditing] = useState(false)
 	const [isExportModalOpen, setIsExportModalOpen] = useState(false)
 
@@ -61,6 +63,8 @@ export default function TimetableApp() {
 		}
 
 		setLoading(true)
+		setProgress(0)
+		setStatusText('準備中...')
 
 		const parseDate = (dateStr: string) => {
 			const parts = dateStr.split('-')
@@ -77,6 +81,10 @@ export default function TimetableApp() {
 				lessons,
 				includeWeekNumbers,
 				selectedSchoolId,
+				(percent, message) => {
+					setProgress(percent)
+					setStatusText(message)
+				},
 			)
 			if (result?.error) {
 				alert(result.error)
@@ -175,6 +183,8 @@ export default function TimetableApp() {
 				onLogin={handleLogin}
 				onLogout={handleLogout}
 				onExport={handleExport}
+				progress={progress}
+				statusText={statusText}
 			/>
 		</div>
 	)

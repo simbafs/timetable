@@ -25,6 +25,8 @@ interface ExportModalProps {
 	calendarName: string
 	setCalendarName: (name: string) => void
 	loading: boolean
+	progress: number
+	statusText: string
 	accessToken: string | null
 	userInfo: UserInfo | null
 	disableAuth: boolean
@@ -46,6 +48,8 @@ export default function ExportModal({
 	calendarName,
 	setCalendarName,
 	loading,
+	progress,
+	statusText,
 	accessToken,
 	userInfo,
 	disableAuth,
@@ -249,16 +253,29 @@ export default function ExportModal({
 										)}
 									</div>
 
-									<button
-										onClick={onExport}
-										disabled={loading}
-										className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
-									>
+									<div className="space-y-3">
 										{loading && (
-											<div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+											<div className="space-y-2">
+												<div className="flex justify-between text-xs text-zinc-500">
+													<span>{statusText}</span>
+													<span>{Math.round(progress)}%</span>
+												</div>
+												<div className="h-2 w-full bg-zinc-100 rounded-full overflow-hidden">
+													<div
+														className="h-full bg-emerald-500 transition-all duration-300 ease-out"
+														style={{ width: `${progress}%` }}
+													/>
+												</div>
+											</div>
 										)}
-										匯入 Google 日曆
-									</button>
+										<button
+											onClick={onExport}
+											disabled={loading}
+											className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+										>
+											{loading ? '匯入中...' : '匯入 Google 日曆'}
+										</button>
+									</div>
 								</div>
 							)}
 						</div>
