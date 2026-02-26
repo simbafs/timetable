@@ -1,6 +1,11 @@
 import type { APIRoute } from 'astro'
 import { google } from 'googleapis'
-import { addLessonEvent, createWeekNumbers, findCalendarByName, type Semester } from '../../services/googleCalendar'
+import {
+	addLessonEvent,
+	createWeekNumbers,
+	getOrCreateCalendarByName,
+	type Semester,
+} from '../../services/googleCalendar'
 import { DEFAULT_SCHOOL_ID, getPeriodTable, getSchoolConfig } from '../../utils/config'
 
 export const prerender = false
@@ -38,7 +43,7 @@ export const POST: APIRoute = async ({ request }) => {
 				end: new Date(data.semester[3], data.semester[4], data.semester[5], 12, 0, 0),
 			}
 
-			const calendarId = await findCalendarByName(oauth2Client, data.calendar)
+			const calendarId = await getOrCreateCalendarByName(oauth2Client, data.calendar)
 
 			const schoolId = data.school || DEFAULT_SCHOOL_ID
 			const config = getSchoolConfig(schoolId)

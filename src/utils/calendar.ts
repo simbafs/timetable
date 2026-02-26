@@ -29,3 +29,17 @@ export async function exportToCalendar(
 
 	return await response.json()
 }
+
+export async function getCalendars(accessToken: string | null) {
+	const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+	if (accessToken) {
+		headers['Authorization'] = `Bearer ${accessToken}`
+	}
+
+	const response = await fetch('/api/calendars', {
+		method: 'GET',
+		headers,
+	})
+
+	return await response.json()
+}

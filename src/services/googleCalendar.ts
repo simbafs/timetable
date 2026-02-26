@@ -76,9 +76,39 @@ export async function createWeekNumbers(auth: Auth.OAuth2Client, calendarId: str
 	}
 }
 
-export async function findCalendarByName(auth: Auth.OAuth2Client, name: string): Promise<string> {
+export async function getOrCreateCalendarByName(auth: Auth.OAuth2Client, name: string): Promise<string> {
 	const calendar = google.calendar({ version: 'v3', auth })
 	const res = await calendar.calendarList.list()
 	const calendars = res.data.items || []
-	return calendars.find(c => c.summary === name)?.id || 'primary'
+	const existingCalendar = calendars.find(c => c.summary === name)
+
+	if (existingCalendar?.id) {
+		return existingCalendar.id
+	}
+
+	// Create new calendar
+	const newCalendar = await calendar.calendars.insert({
+		requestBody: {
+			summary: name,
+			timeZone: TIMEZONE,
+		},
+	})
+
+	if (!newCalendar.data.id) {
+		throw new Error('Failed to create calendar')
+	}
+
+	return newCalendar.data.id
+}
+
+export async function listCalendars(auth: Auth.OAuth2Client) {
+	const calendar = google.calendar({ version: 'v3', auth })
+	const res = await calendar.calendarList.list({
+		minAccessRole: 'writer',
+	})
+	return (res.data.items || []).map(c => ({
+		id: c.id,
+		summary: c.summary,
+		primary: c.primary,
+	}))
 }

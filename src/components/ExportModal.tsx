@@ -1,9 +1,16 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { getCalendars } from '../utils/calendar'
 
 interface UserInfo {
 	name: string
 	email: string
 	picture: string
+}
+
+interface Calendar {
+	id: string
+	summary: string
+	primary?: boolean
 }
 
 interface ExportModalProps {
@@ -48,6 +55,23 @@ export default function ExportModal({
 	onExport,
 }: ExportModalProps) {
 	const modalRef = useRef<HTMLDialogElement>(null)
+	const [calendars, setCalendars] = useState<Calendar[]>([])
+	const [isNewCalendar, setIsNewCalendar] = useState(false)
+
+	useEffect(() => {
+		if (isOpen && accessToken) {
+			getCalendars(accessToken)
+				.then(data => {
+					if (data.calendars) {
+						setCalendars(data.calendars)
+						// Check if current calendarName matches an existing calendar
+						const exists = data.calendars.some((c: Calendar) => c.summary === calendarName)
+						setIsNewCalendar(!exists)
+					}
+				})
+				.catch(console.error)
+		}
+	}, [isOpen, accessToken])
 
 	useEffect(() => {
 		if (isOpen) {
@@ -174,12 +198,55 @@ export default function ExportModal({
 
 									<div className="mb-3">
 										<label className="block text-xs font-medium text-zinc-500 mb-1">日曆名稱</label>
-										<input
-											type="text"
-											value={calendarName}
-											onChange={e => setCalendarName(e.target.value)}
-											className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-										/>
+										{!isNewCalendar && calendars.length > 0 ? (
+											<select
+												value={
+													calendars.some(c => c.summary === calendarName)
+														? calendarName
+														: '__new__'
+												}
+												onChange={e => {
+													if (e.target.value === '__new__') {
+														setIsNewCalendar(true)
+														setCalendarName('')
+													} else {
+														setCalendarName(e.target.value)
+													}
+												}}
+												className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none bg-white"
+											>
+												{calendars.map(c => (
+													<option key={c.id} value={c.summary}>
+														{c.summary} {c.primary ? '(主日曆)' : ''}
+													</option>
+												))}
+												<option value="__new__">+ 建立新日曆...</option>
+											</select>
+										) : (
+											<div className="flex gap-2">
+												<input
+													type="text"
+													value={calendarName}
+													onChange={e => setCalendarName(e.target.value)}
+													placeholder="輸入日曆名稱"
+													className="flex-1 rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+													autoFocus
+												/>
+												{calendars.length > 0 && (
+													<button
+														onClick={() => {
+															setIsNewCalendar(false)
+															if (calendars.length > 0) {
+																setCalendarName(calendars[0].summary)
+															}
+														}}
+														className="px-3 py-2 text-sm text-zinc-500 hover:text-zinc-700 bg-zinc-100 hover:bg-zinc-200 rounded-lg transition-colors"
+													>
+														取消
+													</button>
+												)}
+											</div>
+										)}
 									</div>
 
 									<button
