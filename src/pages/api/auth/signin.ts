@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro'
-import { google } from 'googleapis'
+import { OAuth2Client } from 'google-auth-library'
 
 export const prerender = false
 
@@ -19,7 +19,7 @@ export const GET: APIRoute = async ({ request, redirect }) => {
 		return new Response('Missing PUBLIC_GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET', { status: 500 })
 	}
 
-	const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirect_uri)
+	const oauth2Client = new OAuth2Client(clientId, clientSecret, redirect_uri)
 
 	const scopes = [
 		'https://www.googleapis.com/auth/calendar',

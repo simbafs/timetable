@@ -1,4 +1,5 @@
-import { type Auth, google } from 'googleapis'
+import { calendar } from '@googleapis/calendar'
+import type { OAuth2Client } from 'google-auth-library'
 import { formatDateTime, getLessonTime, setDayOfWeek } from '../utils/date'
 
 const TIMEZONE = 'Asia/Taipei'
@@ -9,7 +10,7 @@ export interface Semester {
 }
 
 export async function addLessonEvent(
-	auth: Auth.OAuth2Client,
+	auth: OAuth2Client,
 	calendarId: string,
 	semester: Semester,
 	name: string,
@@ -23,7 +24,7 @@ export async function addLessonEvent(
 	const startDateBase = setDayOfWeek(new Date(semester.start), dow)
 	const [startDateTime, endDateTime] = getLessonTime(startDateBase, start, end, periodTable)
 
-	const calendar = google.calendar({ version: 'v3', auth })
+	const cal = calendar({ version: 'v3', auth })
 
 	// UNTIL must be UTC.
 	// We convert semester.end (local Date) to UTC string roughly covering the end of that day.
@@ -34,7 +35,7 @@ export async function addLessonEvent(
 
 	const recurrence = [`RRULE:FREQ=WEEKLY;UNTIL=${untilStr}`]
 
-	await calendar.events.insert({
+	await cal.events.insert({
 		calendarId,
 		requestBody: {
 			summary: name,
@@ -46,9 +47,9 @@ export async function addLessonEvent(
 	})
 }
 
-export async function createWeekNumbers(auth: Auth.OAuth2Client, calendarId: string, start: Date, end: Date) {
+export async function createWeekNumbers(auth: OAuth2Client, calendarId: string, start: Date, end: Date) {
 	const d = new Date(start)
-	const calendar = google.calendar({ version: 'v3', auth })
+	const cal = calendar({ version: 'v3', auth })
 
 	let i = 1
 	while (true) {
@@ -62,7 +63,7 @@ export async function createWeekNumbers(auth: Auth.OAuth2Client, calendarId: str
 		const startStr = formatDateTime(sDate, 0, 0)
 		const endStr = formatDateTime(eDate, 23, 59)
 
-		await calendar.events.insert({
+		await cal.events.insert({
 			calendarId,
 			requestBody: {
 				summary: `第 ${i} 周`,
@@ -76,9 +77,9 @@ export async function createWeekNumbers(auth: Auth.OAuth2Client, calendarId: str
 	}
 }
 
-export async function getOrCreateCalendarByName(auth: Auth.OAuth2Client, name: string): Promise<string> {
-	const calendar = google.calendar({ version: 'v3', auth })
-	const res = await calendar.calendarList.list()
+export async function getOrCreateCalendarByName(auth: OAuth2Client, name: string): Promise<string> {
+	const cal = calendar({ version: 'v3', auth })
+	const res = await cal.calendarList.list()
 	const calendars = res.data.items || []
 	const existingCalendar = calendars.find(c => c.summary === name)
 
@@ -87,7 +88,7 @@ export async function getOrCreateCalendarByName(auth: Auth.OAuth2Client, name: s
 	}
 
 	// Create new calendar
-	const newCalendar = await calendar.calendars.insert({
+	const newCalendar = await cal.calendars.insert({
 		requestBody: {
 			summary: name,
 			timeZone: TIMEZONE,
@@ -101,9 +102,9 @@ export async function getOrCreateCalendarByName(auth: Auth.OAuth2Client, name: s
 	return newCalendar.data.id
 }
 
-export async function listCalendars(auth: Auth.OAuth2Client) {
-	const calendar = google.calendar({ version: 'v3', auth })
-	const res = await calendar.calendarList.list({
+export async function listCalendars(auth: OAuth2Client) {
+	const cal = calendar({ version: 'v3', auth })
+	const res = await cal.calendarList.list({
 		minAccessRole: 'writer',
 	})
 	return (res.data.items || []).map(c => ({

@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro'
-import { google } from 'googleapis'
+import { OAuth2Client } from 'google-auth-library'
 import {
 	addLessonEvent,
 	createWeekNumbers,
@@ -37,7 +37,7 @@ export const POST: APIRoute = async ({ request }) => {
 	}
 
 	const accessToken = authHeader.substring(7)
-	const oauth2Client = new google.auth.OAuth2()
+	const oauth2Client = new OAuth2Client()
 	oauth2Client.setCredentials({ access_token: accessToken })
 
 	let data: RequestBody
