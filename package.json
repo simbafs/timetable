@@ -17,7 +17,7 @@
 		"@googleapis/calendar": "^14.2.0",
 		"@tailwindcss/vite": "^4.1.12",
 		"@types/react": "^19.2.14",
-		"astro": "^5.17.3",
+		"astro": "^6.1.6",
 		"daisyui": "^5.0.54",
 		"google-auth-library": "^10.6.1",
 		"prettier": "^3.6.2",
